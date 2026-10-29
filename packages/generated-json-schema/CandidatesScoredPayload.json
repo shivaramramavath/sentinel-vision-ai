@@ -1,0 +1,72 @@
+{
+  "$ref": "#/definitions/CandidatesScoredPayload",
+  "definitions": {
+    "CandidatesScoredPayload": {
+      "type": "object",
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caseId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "searchJobId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "cameraId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frameTimestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "faceScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reidScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fusedRank": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "confidenceBand": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "thumbnailKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cropKey": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "candidateId",
+        "caseId",
+        "cameraId",
+        "frameTimestamp",
+        "fusedRank",
+        "confidenceBand",
+        "thumbnailKey",
+        "cropKey"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

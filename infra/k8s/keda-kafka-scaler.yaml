@@ -1,0 +1,36 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: sentinel-inference-kafka-scaler
+  namespace: sentinel-vision
+spec:
+  scaleTargetRef:
+    name: sentinel-inference-gpu
+  minReplicaCount: 2
+  maxReplicaCount: 20
+  cooldownPeriod: 120
+  pollingInterval: 10
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 180
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka:9092
+        consumerGroup: sentinel-inference-workers
+        topic: search.jobs.commands
+        # Scale up by 1 replica for every 5 lagging shards
+        lagThreshold: "5"
+        activationLagThreshold: "1"

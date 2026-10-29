@@ -1,0 +1,1326 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SentinelVisionContracts",
+  "definitions": {
+    "EventEnvelope": {
+      "$ref": "#/definitions/EventEnvelope",
+      "definitions": {
+        "EventEnvelope": {
+          "type": "object",
+          "properties": {
+            "eventId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "version": {
+              "type": "string",
+              "default": "1.0"
+            },
+            "occurredAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "correlationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "caseId": {
+              "type": "string"
+            },
+            "cameraId": {
+              "type": "string"
+            },
+            "payload": {}
+          },
+          "required": [
+            "eventId",
+            "type",
+            "occurredAt",
+            "correlationId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "SearchJobsCommandPayload": {
+      "$ref": "#/definitions/SearchJobsCommandPayload",
+      "definitions": {
+        "SearchJobsCommandPayload": {
+          "type": "object",
+          "properties": {
+            "searchJobId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "referencePhotoKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "faceThreshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.6
+            },
+            "reidThreshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.5
+            },
+            "topK": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "cameraIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "fromTime": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "toTime": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requestedBy": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "searchJobId",
+            "caseId",
+            "referencePhotoKey",
+            "requestedBy"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "SearchJobsProgressPayload": {
+      "$ref": "#/definitions/SearchJobsProgressPayload",
+      "definitions": {
+        "SearchJobsProgressPayload": {
+          "type": "object",
+          "properties": {
+            "searchJobId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "queued",
+                "extracting_features",
+                "searching_face_index",
+                "searching_reid_index",
+                "fusing_results",
+                "completed",
+                "failed"
+              ]
+            },
+            "progressPercent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "candidatesFound": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "errorMessage": {
+              "type": "string"
+            },
+            "completedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "searchJobId",
+            "caseId",
+            "status",
+            "progressPercent"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "VideoFramesRawPayload": {
+      "$ref": "#/definitions/VideoFramesRawPayload",
+      "definitions": {
+        "VideoFramesRawPayload": {
+          "type": "object",
+          "properties": {
+            "frameId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cameraId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sequenceNumber": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "frameS3Key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "width": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "height": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "capturedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "fps": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "default": 5
+            }
+          },
+          "required": [
+            "frameId",
+            "cameraId",
+            "sequenceNumber",
+            "frameS3Key",
+            "width",
+            "height",
+            "capturedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "DetectionsPersonPayload": {
+      "$ref": "#/definitions/DetectionsPersonPayload",
+      "definitions": {
+        "DetectionsPersonPayload": {
+          "type": "object",
+          "properties": {
+            "detectionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cameraId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "frameId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capturedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "personBbox": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "personScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "cropS3Key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytetrackId": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "detectionId",
+            "cameraId",
+            "frameId",
+            "capturedAt",
+            "personBbox",
+            "personScore",
+            "cropS3Key"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "EmbeddingsGeneratedPayload": {
+      "$ref": "#/definitions/EmbeddingsGeneratedPayload",
+      "definitions": {
+        "EmbeddingsGeneratedPayload": {
+          "type": "object",
+          "properties": {
+            "embeddingId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "face",
+                "reid"
+              ]
+            },
+            "caseId": {
+              "type": "string"
+            },
+            "cameraId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "frameId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capturedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "cropS3Key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pineconeId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pineconeIndex": {
+              "type": "string",
+              "minLength": 1
+            },
+            "vectorDimension": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "detectionScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "bbox": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "bytetrackId": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "embeddingId",
+            "kind",
+            "cameraId",
+            "frameId",
+            "capturedAt",
+            "cropS3Key",
+            "model_version",
+            "pineconeId",
+            "pineconeIndex",
+            "vectorDimension",
+            "detectionScore",
+            "bbox"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "CandidatesScoredPayload": {
+      "$ref": "#/definitions/CandidatesScoredPayload",
+      "definitions": {
+        "CandidatesScoredPayload": {
+          "type": "object",
+          "properties": {
+            "candidateId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "searchJobId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "cameraId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "frameTimestamp": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "faceScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "reidScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "fusedRank": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "confidenceBand": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "thumbnailKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cropKey": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "candidateId",
+            "caseId",
+            "cameraId",
+            "frameTimestamp",
+            "fusedRank",
+            "confidenceBand",
+            "thumbnailKey",
+            "cropKey"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "SightingsCreatedPayload": {
+      "$ref": "#/definitions/SightingsCreatedPayload",
+      "definitions": {
+        "SightingsCreatedPayload": {
+          "type": "object",
+          "properties": {
+            "sightingId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cameraId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "detectedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "thumbnailKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "confidenceBand": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "displayLabel": {
+              "type": "string",
+              "const": "Possible match"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending_review",
+                "confirmed_sighting",
+                "rejected"
+              ],
+              "default": "pending_review"
+            },
+            "faceEmbeddingId": {
+              "type": "string"
+            },
+            "reidEmbeddingId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sightingId",
+            "caseId",
+            "cameraId",
+            "detectedAt",
+            "thumbnailKey",
+            "confidenceBand",
+            "displayLabel"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "JourneysUpdatedPayload": {
+      "$ref": "#/definitions/JourneysUpdatedPayload",
+      "definitions": {
+        "JourneysUpdatedPayload": {
+          "type": "object",
+          "properties": {
+            "journeyId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "personId": {
+              "type": "string"
+            },
+            "cameraSequence": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "sightings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sightingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cameraId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "confidenceBand": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  }
+                },
+                "required": [
+                  "sightingId",
+                  "cameraId",
+                  "timestamp",
+                  "confidenceBand"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "lastSeenCameraId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "lastSeenAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "journeyId",
+            "caseId",
+            "cameraSequence",
+            "sightings",
+            "lastSeenCameraId",
+            "lastSeenAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "AlertsCreatedPayload": {
+      "$ref": "#/definitions/AlertsCreatedPayload",
+      "definitions": {
+        "AlertsCreatedPayload": {
+          "type": "object",
+          "properties": {
+            "alertId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "caseId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sightingId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "confidenceBand": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "destination": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "webhook",
+                    "email",
+                    "ui"
+                  ]
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "target"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "alertId",
+            "caseId",
+            "sightingId",
+            "message",
+            "confidenceBand",
+            "destination"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "DeadLetterQueuePayload": {
+      "$ref": "#/definitions/DeadLetterQueuePayload",
+      "definitions": {
+        "DeadLetterQueuePayload": {
+          "type": "object",
+          "properties": {
+            "originalTopic": {
+              "type": "string",
+              "minLength": 1
+            },
+            "failedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "errorReason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "stackTrace": {
+              "type": "string"
+            },
+            "retryCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "originalEvent": {}
+          },
+          "required": [
+            "originalTopic",
+            "failedAt",
+            "errorReason",
+            "retryCount"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "CreateCaseDto": {
+      "$ref": "#/definitions/CreateCaseDto",
+      "definitions": {
+        "CreateCaseDto": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "personName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "personDescription": {
+              "type": "object",
+              "properties": {
+                "age": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 150
+                },
+                "sex": {
+                  "type": "string",
+                  "enum": [
+                    "male",
+                    "female",
+                    "unknown"
+                  ]
+                },
+                "heightCm": {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 250
+                },
+                "buildNotes": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "lastSeenWearing": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "distinguishingFeatures": {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                "lastSeenLocation": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "lastSeenAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            },
+            "reportedBy": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "reportedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "contactInfo": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 50
+              },
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "title",
+            "personName",
+            "reportedBy"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "UpdateCaseDto": {
+      "$ref": "#/definitions/UpdateCaseDto",
+      "definitions": {
+        "UpdateCaseDto": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "personName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "personDescription": {
+              "type": "object",
+              "properties": {
+                "age": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 150
+                },
+                "sex": {
+                  "type": "string",
+                  "enum": [
+                    "male",
+                    "female",
+                    "unknown"
+                  ]
+                },
+                "heightCm": {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 250
+                },
+                "buildNotes": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "lastSeenWearing": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "distinguishingFeatures": {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                "lastSeenLocation": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "lastSeenAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            },
+            "reportedBy": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "reportedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "contactInfo": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 50
+              },
+              "maxItems": 20
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "closed",
+                "suspended"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "Case": {
+      "$ref": "#/definitions/Case",
+      "definitions": {
+        "Case": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "personName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "personDescription": {
+              "type": "object",
+              "properties": {
+                "age": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 150
+                },
+                "sex": {
+                  "type": "string",
+                  "enum": [
+                    "male",
+                    "female",
+                    "unknown"
+                  ]
+                },
+                "heightCm": {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 250
+                },
+                "buildNotes": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "lastSeenWearing": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "distinguishingFeatures": {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                "lastSeenLocation": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "lastSeenAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            },
+            "reportedBy": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "reportedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "contactInfo": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 50
+              },
+              "maxItems": 20
+            },
+            "id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "closed",
+                "suspended"
+              ],
+              "default": "active"
+            },
+            "referencePhotoKeys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "createdBy": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "personName",
+            "reportedBy",
+            "id",
+            "createdAt",
+            "updatedAt",
+            "createdBy"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "CreateCameraDto": {
+      "$ref": "#/definitions/CreateCameraDto",
+      "definitions": {
+        "CreateCameraDto": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "rtspUrl": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^rtsp\\:\\/\\/"
+            },
+            "location": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "latitude": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "longitude": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "building": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "floor": {
+                  "type": "string",
+                  "maxLength": 50
+                }
+              },
+              "required": [
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "frameRateFps": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 5
+            },
+            "resolutionWidth": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "resolutionHeight": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 50
+              },
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "name",
+            "rtspUrl",
+            "location"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "UpdateCameraDto": {
+      "$ref": "#/definitions/UpdateCameraDto",
+      "definitions": {
+        "UpdateCameraDto": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "rtspUrl": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^rtsp\\:\\/\\/"
+            },
+            "location": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "latitude": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "longitude": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "building": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "floor": {
+                  "type": "string",
+                  "maxLength": 50
+                }
+              },
+              "required": [
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "frameRateFps": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 5
+            },
+            "resolutionWidth": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "resolutionHeight": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 50
+              },
+              "maxItems": 20
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "inactive",
+                "error"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "Camera": {
+      "$ref": "#/definitions/Camera",
+      "definitions": {
+        "Camera": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "rtspUrl": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^rtsp\\:\\/\\/"
+            },
+            "location": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "latitude": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "longitude": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "building": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "floor": {
+                  "type": "string",
+                  "maxLength": 50
+                }
+              },
+              "required": [
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "frameRateFps": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 5
+            },
+            "resolutionWidth": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "resolutionHeight": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 50
+              },
+              "maxItems": 20
+            },
+            "id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "inactive",
+                "error"
+              ],
+              "default": "inactive"
+            },
+            "lastSeenAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "name",
+            "rtspUrl",
+            "location",
+            "id",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  }
+}

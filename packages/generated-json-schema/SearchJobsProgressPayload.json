@@ -1,0 +1,55 @@
+{
+  "$ref": "#/definitions/SearchJobsProgressPayload",
+  "definitions": {
+    "SearchJobsProgressPayload": {
+      "type": "object",
+      "properties": {
+        "searchJobId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "caseId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "extracting_features",
+            "searching_face_index",
+            "searching_reid_index",
+            "fusing_results",
+            "completed",
+            "failed"
+          ]
+        },
+        "progressPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "candidatesFound": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "searchJobId",
+        "caseId",
+        "status",
+        "progressPercent"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

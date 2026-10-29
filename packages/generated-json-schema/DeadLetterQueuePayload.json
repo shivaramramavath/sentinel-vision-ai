@@ -1,0 +1,38 @@
+{
+  "$ref": "#/definitions/DeadLetterQueuePayload",
+  "definitions": {
+    "DeadLetterQueuePayload": {
+      "type": "object",
+      "properties": {
+        "originalTopic": {
+          "type": "string",
+          "minLength": 1
+        },
+        "failedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "errorReason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stackTrace": {
+          "type": "string"
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "originalEvent": {}
+      },
+      "required": [
+        "originalTopic",
+        "failedAt",
+        "errorReason",
+        "retryCount"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

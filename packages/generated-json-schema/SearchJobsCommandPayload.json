@@ -1,0 +1,66 @@
+{
+  "$ref": "#/definitions/SearchJobsCommandPayload",
+  "definitions": {
+    "SearchJobsCommandPayload": {
+      "type": "object",
+      "properties": {
+        "searchJobId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "caseId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "referencePhotoKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "faceThreshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.6
+        },
+        "reidThreshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.5
+        },
+        "topK": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "cameraIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fromTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "toTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requestedBy": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "searchJobId",
+        "caseId",
+        "referencePhotoKey",
+        "requestedBy"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

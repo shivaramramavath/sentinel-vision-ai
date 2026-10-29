@@ -1,0 +1,96 @@
+{
+  "$ref": "#/definitions/CreateCaseDto",
+  "definitions": {
+    "CreateCaseDto": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "personName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "personDescription": {
+          "type": "object",
+          "properties": {
+            "age": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 150
+            },
+            "sex": {
+              "type": "string",
+              "enum": [
+                "male",
+                "female",
+                "unknown"
+              ]
+            },
+            "heightCm": {
+              "type": "number",
+              "minimum": 50,
+              "maximum": 250
+            },
+            "buildNotes": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "lastSeenWearing": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "distinguishingFeatures": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "lastSeenLocation": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "lastSeenAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "additionalProperties": false
+        },
+        "reportedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "reportedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contactInfo": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "title",
+        "personName",
+        "reportedBy"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

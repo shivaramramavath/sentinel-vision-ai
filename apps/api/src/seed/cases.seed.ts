@@ -1,0 +1,240 @@
+import { Model } from 'mongoose';
+import { CaseDocument } from '../cases/schemas/case.schema';
+import { resolveOffset } from './time-offsets';
+
+export async function seedCases(
+  caseModel: Model<CaseDocument>,
+  options: { reset?: boolean } = {},
+) {
+  if (options.reset) {
+    await caseModel.deleteMany({ seed: true });
+  }
+
+  const rawCases = [
+    {
+      seedKey: 'case_001',
+      caseNumber: 'MP-2026-0891',
+      title: 'Disappearance of Maya Lin (Age 14)',
+      personName: 'Maya Lin',
+      age: 14,
+      gender: 'female',
+      heightCm: 155,
+      lastSeenLocation: 'Central Transit Hub, Platform 4',
+      lastSeenAtOffset: '-2h',
+      reportedAtOffset: '-1h45m',
+      priority: 'critical',
+      status: 'active',
+      description: 'Separated from school excursion group near Central Station. Left backpack near kiosk.',
+      lastSeenWearing: 'Navy blue school blazer, grey pleated skirt, white sneakers, yellow hairclip.',
+      distinguishingFeatures: 'Small birthmark beneath left ear, silver wire-rim glasses.',
+      assignedOfficer: 'Insp. Sarah Vance',
+      sightingsCount: 5,
+      referenceSetVersion: 1,
+      isMinor: true,
+      referencePhotos: [
+        {
+          id: 'ref_001',
+          url: '/uploads/reference-photos/ref_maya_lin_front.svg',
+          type: 'face',
+          qualityScore: 94,
+          isSynthetic: false,
+          provenance: {
+            source: 'family_photo',
+            verifiedReal: true,
+            verifiedBy: 'Insp. Sarah Vance',
+            fileHashSha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+          },
+          uploadedAt: resolveOffset('-1h40m'),
+          model_version: 'v1.0',
+        },
+        {
+          id: 'ref_002',
+          url: '/uploads/reference-photos/ref_maya_lin_body.svg',
+          type: 'full_body',
+          qualityScore: 88,
+          isSynthetic: false,
+          provenance: {
+            source: 'official_id',
+            verifiedReal: true,
+            verifiedBy: 'Insp. Sarah Vance',
+            fileHashSha256: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
+          },
+          uploadedAt: resolveOffset('-1h35m'),
+          model_version: 'v1.0',
+        },
+      ],
+      seed: true,
+    },
+    {
+      seedKey: 'case_002',
+      caseNumber: 'MP-2026-1042',
+      title: 'Disappearance of Maya Chen (Age 14)',
+      personName: 'Maya Chen',
+      age: 14,
+      gender: 'female',
+      heightCm: 152,
+      lastSeenLocation: 'Terminal 2 Arrivals, Metro Station',
+      lastSeenAtOffset: '-3h',
+      reportedAtOffset: '-2h30m',
+      priority: 'critical',
+      status: 'active',
+      description: 'Separated from school excursion party near baggage carousel. Non-verbal, vulnerable.',
+      lastSeenWearing: 'Bright yellow hoodie, dark jeans, white sneakers, purple canvas backpack',
+      assignedOfficer: 'Insp. Sarah Vance',
+      sightingsCount: 4,
+      referenceSetVersion: 1,
+      isMinor: true,
+      referencePhotos: [
+        {
+          id: 'ref_003',
+          url: '/uploads/reference-photos/ref_maya_chen_front.svg',
+          type: 'frontal',
+          qualityScore: 98,
+          isSynthetic: false,
+          provenance: {
+            source: 'family_photo',
+            verifiedReal: true,
+            verifiedBy: 'Insp. Sarah Vance',
+            fileHashSha256: '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a',
+          },
+          uploadedAt: resolveOffset('-2h25m'),
+          model_version: 'v1.0',
+        },
+        {
+          id: 'ref_004',
+          url: '/uploads/reference-photos/ref_maya_chen_profile.svg',
+          type: 'profile_right',
+          qualityScore: 91,
+          isSynthetic: false,
+          provenance: {
+            source: 'public_appeal',
+            verifiedReal: true,
+            verifiedBy: 'Insp. Sarah Vance',
+            fileHashSha256: 'ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d',
+          },
+          uploadedAt: resolveOffset('-2h20m'),
+          model_version: 'v1.0',
+        },
+      ],
+      seed: true,
+    },
+    {
+      seedKey: 'case_003',
+      caseNumber: 'MP-2026-1038',
+      title: 'Search for David Kim (Age 72)',
+      personName: 'David Kim',
+      age: 72,
+      gender: 'male',
+      heightCm: 172,
+      lastSeenLocation: 'Terminal 1 Departures, Check-in Hall B',
+      lastSeenAtOffset: '-18h',
+      reportedAtOffset: '-17h',
+      priority: 'high',
+      status: 'active',
+      description: 'Elderly gentleman with mild memory impairment. Wandered away from gate waiting area.',
+      lastSeenWearing: 'Navy blue windbreaker jacket, grey slacks, black walking cane',
+      assignedOfficer: 'Det. Marcus Brody',
+      sightingsCount: 2,
+      referenceSetVersion: 1,
+      isMinor: false,
+      isVulnerable: true,
+      referencePhotos: [
+        {
+          id: 'ref_005',
+          url: '/uploads/reference-photos/ref_david_kim_front.svg',
+          type: 'frontal',
+          qualityScore: 95,
+          isSynthetic: false,
+          provenance: {
+            source: 'official_id',
+            verifiedReal: true,
+            verifiedBy: 'Det. Marcus Brody',
+            fileHashSha256: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+          },
+          uploadedAt: resolveOffset('-16h50m'),
+          model_version: 'v1.0',
+        },
+      ],
+      seed: true,
+    },
+    {
+      seedKey: 'case_004',
+      caseNumber: 'MP-2026-0042',
+      title: 'Investigation: Elena Rostova',
+      personName: 'Elena Rostova',
+      age: 29,
+      gender: 'female',
+      heightCm: 168,
+      lastSeenLocation: 'East Escalators Corridor, Level 3',
+      lastSeenAtOffset: '-3d',
+      reportedAtOffset: '-2d22h',
+      priority: 'medium',
+      status: 'resolved',
+      description: 'Located safely at transit hotel with assistance from airport security.',
+      lastSeenWearing: 'Olive green trench coat, black turtleneck',
+      assignedOfficer: 'Officer Marcus Chen',
+      sightingsCount: 3,
+      referenceSetVersion: 1,
+      isMinor: false,
+      referencePhotos: [
+        {
+          id: 'ref_006',
+          url: '/uploads/reference-photos/ref_elena_rostova_front.svg',
+          type: 'frontal',
+          qualityScore: 96,
+          isSynthetic: false,
+          provenance: {
+            source: 'official_id',
+            verifiedReal: true,
+            verifiedBy: 'Officer Marcus Chen',
+            fileHashSha256: 'f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2',
+          },
+          uploadedAt: resolveOffset('-2d20h'),
+          model_version: 'v1.0',
+        },
+      ],
+      seed: true,
+    },
+    {
+      seedKey: 'case_005',
+      caseNumber: 'MP-2026-0015',
+      title: 'Case File: Marcus Brody',
+      personName: 'Marcus Brody',
+      age: 34,
+      gender: 'male',
+      heightCm: 180,
+      lastSeenLocation: 'Baggage Reclaim Zone 4',
+      lastSeenAtOffset: '-7d',
+      reportedAtOffset: '-6d20h',
+      priority: 'low',
+      status: 'closed',
+      description: 'Case formally closed. Transit investigation concluded.',
+      lastSeenWearing: 'Grey fleece jacket, jeans',
+      assignedOfficer: 'Auditor James Kelly',
+      sightingsCount: 1,
+      referenceSetVersion: 1,
+      isMinor: false,
+      referencePhotos: [],
+      seed: true,
+    },
+  ];
+
+  const seededCases = [];
+
+  for (const c of rawCases) {
+    const caseDoc = {
+      ...c,
+      lastSeenAt: resolveOffset(c.lastSeenAtOffset),
+      reportedAt: resolveOffset(c.reportedAtOffset),
+    };
+
+    const doc = await caseModel.findOneAndUpdate(
+      { caseNumber: c.caseNumber },
+      { $set: caseDoc },
+      { upsert: true, new: true },
+    );
+    seededCases.push(doc);
+  }
+
+  return { count: seededCases.length, cases: seededCases };
+}

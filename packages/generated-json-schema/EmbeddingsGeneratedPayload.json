@@ -1,0 +1,99 @@
+{
+  "$ref": "#/definitions/EmbeddingsGeneratedPayload",
+  "definitions": {
+    "EmbeddingsGeneratedPayload": {
+      "type": "object",
+      "properties": {
+        "embeddingId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "face",
+            "reid"
+          ]
+        },
+        "caseId": {
+          "type": "string"
+        },
+        "cameraId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "cropS3Key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pineconeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pineconeIndex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vectorDimension": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "detectionScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "bbox": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "bytetrackId": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "embeddingId",
+        "kind",
+        "cameraId",
+        "frameId",
+        "capturedAt",
+        "cropS3Key",
+        "model_version",
+        "pineconeId",
+        "pineconeIndex",
+        "vectorDimension",
+        "detectionScore",
+        "bbox"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

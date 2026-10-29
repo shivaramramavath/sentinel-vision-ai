@@ -1,0 +1,54 @@
+{
+  "$ref": "#/definitions/VideoFramesRawPayload",
+  "definitions": {
+    "VideoFramesRawPayload": {
+      "type": "object",
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cameraId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sequenceNumber": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "frameS3Key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "width": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "fps": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 5
+        }
+      },
+      "required": [
+        "frameId",
+        "cameraId",
+        "sequenceNumber",
+        "frameS3Key",
+        "width",
+        "height",
+        "capturedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

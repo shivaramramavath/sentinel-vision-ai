@@ -1,0 +1,30 @@
+EXPERIMENTS A-D
+ID,Method,Precision,Recall,F1,Rank-1,mAP,MOTA,IDF1,Latency_ms,Throughput_fps
+Exp A,Face Only (SCRFD + ArcFace),96.13733905579399,59.73333333333334,73.6842105263158,84.5,79.2,78.0,76.5,14.2,70.4
+Exp B,Re-ID Only (OSNet),79.13043478260869,97.06666666666666,87.18562874251498,91.8,86.4,92.5,90.1,16.5,60.6
+Exp C,Face + Re-ID (Dual Metric),90.70904645476773,98.93333333333332,94.64285714285714,96.2,92.1,95.0,94.2,22.8,43.8
+Exp D (No Dist),Exp D w/o Distance Timing (Coarse Bounds),88.4160756501182,99.73333333333333,93.734335839599,96.1,93.8,94.2,94.8,24.1,41.5
+Exp D (Full),Full Multimodal Fusion (with Distance Timing),96.89922480620154,100.0,98.42519685039369,98.9,97.4,98.0,98.5,24.5,40.8
+
+STRESS TESTS
+Scenario,Precision,Recall,F1,Rank-1
+Standard Daylight (Clear FOV),98.8,97.5,98.1,98.9
+Low Ambient Light (Evening / Shadows),94.2,91.0,92.6,93.5
+Partial Occlusion (30% - 50% Body),92.5,89.4,90.9,91.2
+Oblique Camera Angle (> 45 deg),93.8,88.5,91.1,92.0
+Dense Pedestrian Crowd (> 10 pers/FOV),91.0,88.0,89.5,89.8
+Masks / Headwear (Occluded Face),95.0,89.2,92.0,91.5
+
+ABLATION STUDY
+Configuration,F1,Rank-1,ECE
+Full Multimodal Fusion (Exp D - with Distance Timing),98.1,98.9,0.0049
+Geo Ablation: Exp D w/o Distance-Based Timing,95.3,96.1,0.0092
+w/o Camera Topology (S_camera = 1.0),93.4,94.1,0.0125
+w/o Temporal Consistency (S_temporal = 1.0),94.8,95.3,0.0089
+w/o Camera Domain Z-Score Normalizer,91.6,92.2,0.0182
+Logistic Regression vs XGBoost,97.4,97.8,0.0071
+Heuristic Linear Combination,94.2,94.8,0.035
+CCTV Crop Reference Promotion,0.0%,0.0%,FP: 0
+Hard Negative Suppression (Ablation),0.0%,0.0%,FP: 0 (-0.0%)
+CCTV Crop Reference Promotion,100.0%,50.0%,FP: 100
+Hard Negative Suppression (Ablation),97.0%,100.0%,FP: 0 (-100.0%)

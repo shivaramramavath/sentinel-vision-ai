@@ -1,0 +1,81 @@
+{
+  "$ref": "#/definitions/JourneysUpdatedPayload",
+  "definitions": {
+    "JourneysUpdatedPayload": {
+      "type": "object",
+      "properties": {
+        "journeyId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caseId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "personId": {
+          "type": "string"
+        },
+        "cameraSequence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "sightings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sightingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "cameraId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "confidenceBand": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              }
+            },
+            "required": [
+              "sightingId",
+              "cameraId",
+              "timestamp",
+              "confidenceBand"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "lastSeenCameraId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "journeyId",
+        "caseId",
+        "cameraSequence",
+        "sightings",
+        "lastSeenCameraId",
+        "lastSeenAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,0 +1,132 @@
+###############################################################################
+# Sentinel Vision AI — MediaMTX Edge Video Ingestion & Streaming Proxy
+#
+# Protocols Supported:
+# - Ingest: RTSP (8554), RTMP (1935), SRT (8890), WebRTC WHIP (8889)
+# - Restream / Egress: WebRTC WHEP (8889), HLS Low-Latency (8888), RTSP (8554)
+# - Control API: :9997 (Internal docker network only)
+###############################################################################
+
+# Global Logging
+logLevel: info
+logDestinations: [stdout]
+logStructured: false
+
+readTimeout: 10s
+writeTimeout: 10s
+writeQueueSize: 1024
+
+###############################################################################
+# External HTTP Authentication (Delegated to Sentinel NestJS API)
+###############################################################################
+authMethod: http
+authHTTPAddress: http://host.docker.internal:3001/api/v1/media/auth
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+###############################################################################
+# Control API (Internal network only for camera discovery & health probes)
+###############################################################################
+api: yes
+apiAddress: :9997
+
+###############################################################################
+# Metrics & Health
+###############################################################################
+metrics: no
+metricsAddress: :9998
+pprof: no
+pprofAddress: :9999
+
+###############################################################################
+# RTSP Server (Port: 8554)
+###############################################################################
+rtsp: yes
+rtspAddress: :8554
+rtspsAddress: :8322
+rtpAddress: :8000
+rtcpAddress: :8001
+rtspTransports: [tcp, udp]
+rtspEncryption: "no"
+
+###############################################################################
+# RTMP Server (Port: 1935)
+###############################################################################
+rtmp: yes
+rtmpAddress: :1935
+rtmpsAddress: :1936
+rtmpEncryption: "no"
+
+###############################################################################
+# HLS Low-Latency Streaming (Port: 8888)
+###############################################################################
+hls: yes
+hlsAddress: :8888
+hlsAlwaysRemux: yes
+hlsVariant: lowLatency
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+hlsSegmentCount: 7
+hlsAllowOrigins: ["*"]
+
+###############################################################################
+# WebRTC / WHIP / WHEP Server (Port: 8889, ICE UDP: 8189)
+###############################################################################
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+webrtcAllowOrigins: ["*"]
+webrtcHandshakeTimeout: 10s
+
+# Coturn STUN/TURN Integration for WebRTC behind NAT & corporate firewalls
+webrtcICEServers2:
+  - url: turn:coturn:3478?transport=udp
+    username: "AUTH_SECRET"
+    password: "sentinel_turn_secret_2026"
+    clientOnly: false
+  - url: turn:coturn:3478?transport=tcp
+    username: "AUTH_SECRET"
+    password: "sentinel_turn_secret_2026"
+    clientOnly: false
+  - url: stun:coturn:3478
+
+###############################################################################
+# SRT Server (Port: 8890)
+###############################################################################
+srt: yes
+srtAddress: :8890
+
+###############################################################################
+# Stream Paths Pattern: cam/{cameraId}
+###############################################################################
+paths:
+  # 1. On-Demand H.264 Transcoded Browser Preview (for H.265 / HEVC streams)
+  # Only runs when a browser reader connects; zero CPU cost when idle.
+  '~^cam/([^/]+)/preview':
+    source: publisher
+    runOnDemand: ffmpeg -i rtsp://localhost:8554/cam/$G1 -c:v libx264 -preset ultrafast -tune zerolatency -b:v 1500k -maxrate 2000k -bufsize 3000k -c:a copy -f rtsp rtsp://localhost:8554/cam/$G1/preview
+    runOnDemandRestart: yes
+    runOnDemandCloseAfter: 10s
+
+  # 2. On-Demand Low-Bitrate Substream (for Multi-Tile Live Wall Grid)
+  # 640x360 @ 10 FPS, ~400 kbps; provides <1.5s latency across 16 tiles.
+  '~^cam/([^/]+)/sub':
+    source: publisher
+    runOnDemand: ffmpeg -i rtsp://localhost:8554/cam/$G1 -vf scale=640:360 -r 10 -c:v libx264 -preset ultrafast -tune zerolatency -b:v 400k -maxrate 500k -bufsize 800k -c:a copy -f rtsp rtsp://localhost:8554/cam/$G1/sub
+    runOnDemandRestart: yes
+    runOnDemandCloseAfter: 10s
+
+  # 3. Main Stream (Passthrough / Copy - Zero Decoding in Ingest Path)
+  '~^cam/([^/]+)$':
+    source: publisher
+
+    # Hook triggered when stream becomes active / ready
+    runOnAvailable: >
+      sh -c 'wget -q -O - --header="Content-Type: application/json" --post-data="{\"path\":\"$MTX_PATH\",\"cameraId\":\"$G1\",\"status\":\"READY\",\"sourceType\":\"$MTX_SOURCE_TYPE\",\"sourceId\":\"$MTX_SOURCE_ID\"}" http://host.docker.internal:3001/api/v1/media/hook/stream-status || curl -s -X POST http://host.docker.internal:3001/api/v1/media/hook/stream-status -H "Content-Type: application/json" -d "{\"path\":\"$MTX_PATH\",\"cameraId\":\"$G1\",\"status\":\"READY\",\"sourceType\":\"$MTX_SOURCE_TYPE\",\"sourceId\":\"$MTX_SOURCE_ID\"}" || true'
+    runOnAvailableRestart: no
+
+    # Hook triggered when stream publisher disconnects / becomes unavailable
+    runOnUnavailable: >
+      sh -c 'wget -q -O - --header="Content-Type: application/json" --post-data="{\"path\":\"$MTX_PATH\",\"cameraId\":\"$G1\",\"status\":\"NOT_READY\"}" http://host.docker.internal:3001/api/v1/media/hook/stream-status || curl -s -X POST http://host.docker.internal:3001/api/v1/media/hook/stream-status -H "Content-Type: application/json" -d "{\"path\":\"$MTX_PATH\",\"cameraId\":\"$G1\",\"status\":\"NOT_READY\"}" || true'

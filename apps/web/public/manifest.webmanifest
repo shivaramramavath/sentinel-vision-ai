@@ -1,0 +1,17 @@
+{
+  "name": "Sentinel Vision AI — Mobile Broadcaster",
+  "short_name": "Sentinel Mobile",
+  "description": "Tactical Field Camera Broadcaster & Video Streaming PWA for Sentinel Vision AI",
+  "start_url": "/m/stream",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

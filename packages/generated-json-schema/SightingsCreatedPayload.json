@@ -1,0 +1,68 @@
+{
+  "$ref": "#/definitions/SightingsCreatedPayload",
+  "definitions": {
+    "SightingsCreatedPayload": {
+      "type": "object",
+      "properties": {
+        "sightingId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caseId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cameraId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detectedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "thumbnailKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confidenceBand": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "displayLabel": {
+          "type": "string",
+          "const": "Possible match"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending_review",
+            "confirmed_sighting",
+            "rejected"
+          ],
+          "default": "pending_review"
+        },
+        "faceEmbeddingId": {
+          "type": "string"
+        },
+        "reidEmbeddingId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sightingId",
+        "caseId",
+        "cameraId",
+        "detectedAt",
+        "thumbnailKey",
+        "confidenceBand",
+        "displayLabel"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

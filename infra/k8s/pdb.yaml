@@ -1,0 +1,21 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sentinel-api-pdb
+  namespace: sentinel-vision
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: sentinel-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sentinel-inference-pdb
+  namespace: sentinel-vision
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sentinel-inference-worker

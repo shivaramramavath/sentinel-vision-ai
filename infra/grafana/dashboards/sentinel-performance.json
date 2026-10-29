@@ -1,0 +1,90 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Kafka Consumer Group Lag (search.jobs.commands)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "kafka_consumergroup_lag{topic=\"search.jobs.commands\"}",
+          "legendFormat": "{{consumergroup}} - Lag"
+        }
+      ]
+    },
+    {
+      "title": "KEDA GPU Worker Replicas",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "kube_deployment_status_replicas{deployment=\"sentinel-inference-gpu\"}",
+          "legendFormat": "Active GPU Workers"
+        }
+      ]
+    },
+    {
+      "title": "Inference Latency by Stage (ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "sentinel_inference_duration_ms{stage=\"yolo_detect\"}", "legendFormat": "YOLO Detection" },
+        { "expr": "sentinel_inference_duration_ms{stage=\"osnet_reid\"}", "legendFormat": "OSNet Re-ID" },
+        { "expr": "sentinel_inference_duration_ms{stage=\"arcface\"}", "legendFormat": "ArcFace Embedding" },
+        { "expr": "sentinel_inference_duration_ms{stage=\"evidence_fusion\"}", "legendFormat": "Evidence Fusion" }
+      ]
+    },
+    {
+      "title": "Verification Queue Depth & Two-Person Pending",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "sentinel_queue_pending_total", "legendFormat": "Pending First Review" },
+        { "expr": "sentinel_queue_two_person_pending_total", "legendFormat": "Pending Second Review" }
+      ]
+    },
+    {
+      "title": "Expected Calibration Error (ECE)",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "sentinel_fusion_ece", "legendFormat": "ECE (Goal < 0.05)" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 0.1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 0.05, "color": "orange" },
+              { "value": 0.08, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Daily Purged Media Count (Privacy Retention)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        { "expr": "sentinel_retention_purged_total", "legendFormat": "Purged Items" }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["sentinel", "vision", "ai"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Sentinel Vision AI — Enterprise Performance Dashboard",
+  "version": 1
+}

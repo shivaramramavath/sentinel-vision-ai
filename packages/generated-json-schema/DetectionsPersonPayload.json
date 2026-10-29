@@ -1,0 +1,68 @@
+{
+  "$ref": "#/definitions/DetectionsPersonPayload",
+  "definitions": {
+    "DetectionsPersonPayload": {
+      "type": "object",
+      "properties": {
+        "detectionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cameraId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "personBbox": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "personScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cropS3Key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bytetrackId": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "detectionId",
+        "cameraId",
+        "frameId",
+        "capturedAt",
+        "personBbox",
+        "personScore",
+        "cropS3Key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
