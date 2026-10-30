@@ -1,15 +1,38 @@
 'use client';
 
-import React from 'react';
-import { Sidebar } from '@/components/layout/sidebar';
+import React, { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Sidebar, ROUTE_PERMISSIONS } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { CmdKDialog } from '@/components/layout/cmd-k';
 import { useUiStore } from '@/stores/ui.store';
 import { useAuthStore } from '@/stores/auth.store';
+import { usePermission } from '@/hooks/use-permission';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { wallMode } = useUiStore();
   const { isAuthenticated, isCheckingAuth } = useAuthStore();
+  const { can, role, roleMeta, isLoading: isRbacLoading } = usePermission();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Route-level RBAC redirect guard
+  useEffect(() => {
+    if (!isAuthenticated || isCheckingAuth || isRbacLoading) return;
+
+    // Check if current route requires a specific permission
+    for (const [routePrefix, requiredPerm] of Object.entries(ROUTE_PERMISSIONS)) {
+      if (pathname.startsWith(routePrefix)) {
+        if (!can(requiredPerm)) {
+          const destination = roleMeta.landing || '/dashboard';
+          if (pathname !== destination) {
+            router.replace(destination);
+          }
+        }
+        break;
+      }
+    }
+  }, [pathname, isAuthenticated, isCheckingAuth, isRbacLoading, can, roleMeta, router]);
 
   // Guard: Never render protected layout while session restoration is pending or unauthenticated
   if (isCheckingAuth || !isAuthenticated) {

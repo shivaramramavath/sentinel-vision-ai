@@ -1,77 +1,160 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+import {
+  Permission,
+  Role,
+  RoleMeta,
+  ROLE_META,
+  RedactionLevel,
+  getRedactionLevel,
+  normalizeRole,
+  isClearanceSufficient,
+} from '@sentinel/shared-types';
+import { apiClient } from '@/services/api.client';
 import { useAuthStore } from '@/stores/auth.store';
-import { UserRole } from '@/types';
 
-export type Permission =
-  | 'manage_users'
-  | 'manage_roles'
-  | 'manage_system'
-  | 'create_case'
-  | 'edit_case'
-  | 'delete_case'
-  | 'verify_sighting'
-  | 'export_evidence'
-  | 'view_audit_logs'
-  | 'manage_alerts'
-  | 'stream_mobile';
+export interface AbacContext {
+  caseId?: string;
+  assignedOfficerId?: string;
+  assignedOfficer?: string;
+  assignedTeam?: string;
+  accessList?: string[];
+  classification?: string;
+  isMinor?: boolean;
+  legalHoldActive?: boolean;
+}
 
-function normalizeRole(role?: string): string {
-  if (!role) return '';
-  return role.toLowerCase().replace(/\s+/g, '_');
+export interface MyPermissionsResponse {
+  role: Role;
+  permissions: Permission[];
+  isBreakGlass: boolean;
+  expiresAt?: string;
 }
 
 export function usePermission() {
+  const queryClient = useQueryClient();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
-  const normalizedRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
 
-  const permissions = useMemo(() => {
-    const isSuperAdmin = normalizedRole === 'super_admin';
-    const isInvestigator = normalizedRole === 'investigator';
-    const isReviewer = normalizedRole === 'reviewer';
-    const isMobileOperator = normalizedRole === 'mobile_operator';
+  const queryKey = useMemo(() => ['rbac', 'my-permissions'] as const, []);
 
-    return {
-      manage_users: isSuperAdmin,
-      manage_roles: isSuperAdmin,
-      manage_system: isSuperAdmin,
-      create_case: isSuperAdmin || isInvestigator,
-      edit_case: isSuperAdmin || isInvestigator,
-      delete_case: isSuperAdmin,
-      verify_sighting: isSuperAdmin || isInvestigator || isReviewer,
-      export_evidence: isSuperAdmin || isInvestigator,
-      view_audit_logs: isSuperAdmin || isInvestigator,
-      manage_alerts: isSuperAdmin || isInvestigator,
-      stream_mobile: isSuperAdmin || isMobileOperator,
-    };
-  }, [normalizedRole]);
+  const { data, isLoading, isError, error, status: queryStatus } = useQuery<MyPermissionsResponse>({
+    queryKey,
+    queryFn: async () => {
+      const res = await apiClient.get<MyPermissionsResponse>('/auth/me/permissions');
+      return res.data;
+    },
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const hasPermission = (permission: Permission): boolean => {
-    return !!permissions[permission];
-  };
+  const status: 'loading' | 'success' | 'error' =
+    !isAuthenticated || isLoading || queryStatus === 'pending'
+      ? 'loading'
+      : isError || Boolean(error)
+      ? 'error'
+      : 'success';
 
-  const hasAnyRole = (roles: (UserRole | string)[]): boolean => {
-    const normalizedTargets = roles.map((r) => normalizeRole(r));
-    return normalizedTargets.includes(normalizedRole);
-  };
+  const role: Role = useMemo(() => {
+    if (data?.role) return normalizeRole(data.role);
+    if (user?.role) return normalizeRole(user.role);
+    return 'viewer';
+  }, [data?.role, user?.role]);
 
-  const isAdmin = normalizedRole === 'super_admin';
-  const isInvestigator = normalizedRole === 'investigator';
-  const isReviewer = normalizedRole === 'reviewer';
-  const isViewer = normalizedRole === 'viewer';
-  const isMobileOperator = normalizedRole === 'mobile_operator';
+  const roleMeta: RoleMeta = useMemo(() => {
+    return ROLE_META[role] || ROLE_META.viewer;
+  }, [role]);
+
+  const permissions: Permission[] = useMemo(() => {
+    return data?.permissions || [];
+  }, [data?.permissions]);
+
+  const redactionLevel: RedactionLevel = useMemo(() => {
+    return getRedactionLevel(role);
+  }, [role]);
+
+  const isBreakGlass = Boolean(data?.isBreakGlass);
+
+  const invalidatePermissions = useCallback(() => {
+    return queryClient.invalidateQueries({ queryKey: ['rbac', 'my-permissions'] });
+  }, [queryClient]);
+
+  /**
+   * Evaluates if current user can perform an action given a granular permission and optional ABAC context.
+   */
+  const can = useCallback(
+    (permission: Permission, context?: AbacContext): boolean => {
+      // 1. RBAC check (exact or wildcard)
+      const hasPerm =
+        permissions.includes(permission) ||
+        permissions.includes(`${permission.split(':')[0]}:*` as any);
+
+      if (!hasPerm) {
+        return false;
+      }
+
+      // 2. ABAC contextual check if context provided
+      if (context) {
+        // Reviewer role assigned case policy
+        if (role === 'reviewer') {
+          const userId = user?.id || (user as any)?._id;
+          const userEmail = user?.email;
+          const userTeam = (user as any)?.team || (user as any)?.department;
+
+          const isAssigned =
+            (context.assignedOfficerId && context.assignedOfficerId === userId) ||
+            (context.assignedOfficer && (context.assignedOfficer === userId || context.assignedOfficer === userEmail)) ||
+            (context.accessList && (context.accessList.includes(userId) || (userEmail && context.accessList.includes(userEmail))));
+
+          const isTeamAssigned = userTeam && context.assignedTeam && userTeam === context.assignedTeam;
+
+          if (!isAssigned && !isTeamAssigned && (context.assignedOfficerId || context.assignedTeam)) {
+            return false;
+          }
+        }
+
+        // Classification / Clearance check
+        if (context.classification && (user as any)?.clearanceLevel) {
+          if (!isClearanceSufficient((user as any).clearanceLevel, context.classification)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    },
+    [permissions, role, user],
+  );
+
+  const canAll = useCallback(
+    (perms: Permission[]): boolean => {
+      return perms.every((p) => can(p));
+    },
+    [can],
+  );
+
+  const canAny = useCallback(
+    (perms: Permission[]): boolean => {
+      return perms.some((p) => can(p));
+    },
+    [can],
+  );
 
   return {
+    can,
+    canAll,
+    canAny,
     permissions,
-    hasPermission,
-    hasAnyRole,
-    isAdmin,
-    isInvestigator,
-    isReviewer,
-    isViewer,
-    isMobileOperator,
-    role: user?.role,
+    role,
+    roleMeta,
+    redactionLevel,
+    isBreakGlass,
+    isLoading,
+    status,
+    error,
+    invalidatePermissions,
     user,
   };
 }

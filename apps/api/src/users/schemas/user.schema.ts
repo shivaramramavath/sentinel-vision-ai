@@ -19,7 +19,7 @@ export type UserStatus =
   | 'suspended'
   | 'rejected';
 
-export type UserCreatedVia = 'password' | 'google' | 'github' | 'invite';
+export type UserCreatedVia = 'password' | 'google' | 'github' | 'invite' | 'bootstrap';
 
 export type UserDocument = User & Document;
 
@@ -96,10 +96,16 @@ export class User {
 
   @Prop({
     required: true,
-    enum: ['password', 'google', 'github', 'invite'],
+    enum: ['password', 'google', 'github', 'invite', 'bootstrap'],
     default: 'password',
   })
   createdVia: UserCreatedVia;
+
+  @Prop({ default: false })
+  mustChangePassword: boolean;
+
+  @Prop({ default: false })
+  mfaEnrollmentRequired: boolean;
 
   @Prop({ default: true })
   active: boolean;

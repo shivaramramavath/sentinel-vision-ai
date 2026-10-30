@@ -45,14 +45,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } else {
       // User is authenticated
+      // Force setup flow for password change or MFA enrollment
+      if (user?.mustChangePassword || user?.mfaEnrollmentRequired) {
+        if (!pathname.startsWith('/settings/account/security')) {
+          router.replace('/settings/account/security?required=1');
+          return;
+        }
+      }
+
       if (user?.status === 'pending_approval' && pathname !== '/pending-approval') {
         router.replace('/pending-approval');
         return;
       }
 
-      // Authenticated active users on signin/login/register pages are redirected to /dashboard
+      // Authenticated active users on signin/login/register pages are redirected
       if (pathname === '/signin' || pathname === '/login' || pathname === '/register') {
-        router.replace('/dashboard');
+        if (user?.mustChangePassword || user?.mfaEnrollmentRequired) {
+          router.replace('/settings/account/security?required=1');
+        } else {
+          router.replace('/dashboard');
+        }
       }
     }
   }, [isAuthenticated, isCheckingAuth, isPublicPage, isRoot, user?.status, pathname, router]);

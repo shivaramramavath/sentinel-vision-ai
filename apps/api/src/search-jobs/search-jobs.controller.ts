@@ -13,8 +13,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SearchJobsService } from './search-jobs.service';
 import { TriggerSearchDto } from './dto/trigger-search.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { AuditAction } from '../audit/decorators/audit-action.decorator';
@@ -23,13 +23,13 @@ import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
 @ApiTags('Search')
 @ApiBearerAuth()
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(AuditInterceptor)
 export class SearchJobsController {
   constructor(private readonly searchJobsService: SearchJobsService) {}
 
   @Post(['search', 'search-jobs'])
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('searches:run')
   @UseGuards(RateLimitGuard)
   @RateLimit({ max: 10, windowMs: 60000, keyPrefix: 'search' })
   @ApiOperation({ summary: 'Initiate AI person search across surveillance cameras' })
@@ -52,7 +52,7 @@ export class SearchJobsController {
   }
 
   @Post(['search/jobs/:id/pause', 'search-jobs/:id/pause'])
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('searches:cancel')
   @ApiOperation({ summary: 'Pause a running search job' })
   @AuditAction('PAUSE_SEARCH', 'SearchJob', (req) => req.params.id)
   async pauseJob(@Param('id') id: string) {
@@ -60,7 +60,7 @@ export class SearchJobsController {
   }
 
   @Post(['search/jobs/:id/resume', 'search-jobs/:id/resume'])
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('searches:run')
   @ApiOperation({ summary: 'Resume a paused search job' })
   @AuditAction('RESUME_SEARCH', 'SearchJob', (req) => req.params.id)
   async resumeJob(@Param('id') id: string) {
@@ -68,7 +68,7 @@ export class SearchJobsController {
   }
 
   @Post(['search/jobs/:id/cancel', 'search-jobs/:id/cancel'])
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('searches:cancel')
   @ApiOperation({ summary: 'Cancel an active search job' })
   @AuditAction('CANCEL_SEARCH', 'SearchJob', (req) => req.params.id)
   async cancelJob(@Param('id') id: string) {

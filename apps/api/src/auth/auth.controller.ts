@@ -13,6 +13,7 @@ import {
   HttpStatus,
   Query,
   Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Request, Response } from 'express';
@@ -34,8 +35,9 @@ import {
   CreateInviteDto,
 } from './dto/auth-requests.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RolesGuard } from './guards/roles.guard';
-import { Roles } from './decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
+import { RbacService } from '../rbac/rbac.service';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 
@@ -45,6 +47,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly rbacService: RbacService,
   ) {}
 
   private setRefreshCookie(res: Response, cookieValue: string): void {
@@ -66,6 +69,18 @@ export class AuthController {
       path: '/api/v1/auth',
       sameSite: 'lax',
     });
+  }
+
+  @Get('providers')
+  @ApiOperation({ summary: 'List enabled OAuth providers for dynamic login UI rendering' })
+  getEnabledProviders() {
+    const google =
+      this.configService.get<boolean>('oauth.google.enabled') ??
+      this.configService.get<string>('OAUTH_GOOGLE_ENABLED') === 'true';
+    const github =
+      this.configService.get<boolean>('oauth.github.enabled') ??
+      this.configService.get<string>('OAUTH_GITHUB_ENABLED') === 'true';
+    return { google, github };
   }
 
   @Post('register')
@@ -119,6 +134,8 @@ export class AuthController {
       accessToken: result.accessToken,
       user: result.user,
       mfaRequired: result.mfaRequired,
+      mustChangePassword: result.mustChangePassword ?? false,
+      mfaEnrollmentRequired: result.mfaEnrollmentRequired ?? false,
     };
   }
 
@@ -197,19 +214,50 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current authenticated user profile' })
+  @ApiOperation({ summary: 'Get current authenticated user profile from database' })
   async getProfile(@Req() req: Request) {
-    return (req as any).user;
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+    return this.authService.getCurrentUserProfile(userId);
+  }
+
+  @Get('me/permissions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user active permissions, role and break-glass status' })
+  async getMyPermissions(@Req() req: Request) {
+    const user = (req as any).user;
+    if (!user?.id) {
+      throw new UnauthorizedException('Authentication required');
+    }
+    return this.rbacService.getUserEffectivePermissions(user.id, user.role);
+  }
+
+  @Post('step-up')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Elevate session with step-up verification (password or TOTP MFA)' })
+  async stepUp(@Req() req: Request, @Body() body: { password?: string; mfaCode?: string }) {
+    const user = (req as any).user;
+    if (!user?.id) {
+      throw new UnauthorizedException('Authentication required');
+    }
+    return this.authService.stepUp(user.id, user.sessionId, body.password, body.mfaCode);
   }
 
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update profile details' })
+  @ApiOperation({ summary: 'Update profile details in database' })
   async updateProfile(@Req() req: Request, @Body() dto: UpdateProfileDto) {
-    const userId = (req as any).user.id;
-    // update profile in user model
-    return (req as any).user;
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+    return this.authService.updateProfile(userId, dto);
   }
 
   @Post('change-password')
@@ -348,12 +396,12 @@ export class AuthController {
 
 @ApiTags('Admin Users & Invites')
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AdminAuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('users/:id/approve')
-  @Roles('super_admin')
+  @RequirePermissions('users:approve')
   @ApiOperation({ summary: 'Approve user and assign role' })
   async approveUser(
     @Param('id') userId: string,
@@ -366,7 +414,7 @@ export class AdminAuthController {
   }
 
   @Post('users/:id/reject')
-  @Roles('super_admin')
+  @RequirePermissions('users:manage')
   @ApiOperation({ summary: 'Reject user registration' })
   async rejectUser(@Param('id') userId: string, @Body() dto: RejectUserDto) {
     await this.authService.rejectUser(userId, dto.reason);
@@ -374,7 +422,7 @@ export class AdminAuthController {
   }
 
   @Post('users/:id/suspend')
-  @Roles('super_admin')
+  @RequirePermissions('users:manage')
   @ApiOperation({ summary: 'Suspend user account and revoke sessions' })
   async suspendUser(@Param('id') userId: string) {
     await this.authService.suspendUser(userId);
@@ -382,7 +430,7 @@ export class AdminAuthController {
   }
 
   @Post('users/:id/reactivate')
-  @Roles('super_admin')
+  @RequirePermissions('users:manage')
   @ApiOperation({ summary: 'Reactivate suspended user' })
   async reactivateUser(@Param('id') userId: string) {
     await this.authService.reactivateUser(userId);
@@ -390,7 +438,7 @@ export class AdminAuthController {
   }
 
   @Post('users/:id/reset-mfa')
-  @Roles('super_admin')
+  @RequirePermissions('users:manage')
   @ApiOperation({ summary: 'Reset user MFA' })
   async resetUserMfa(@Param('id') userId: string) {
     await this.authService.resetUserMfa(userId);
@@ -398,7 +446,7 @@ export class AdminAuthController {
   }
 
   @Post('users/:id/force-logout')
-  @Roles('super_admin')
+  @RequirePermissions('users:manage')
   @ApiOperation({ summary: 'Force revoke all sessions for user' })
   async forceLogout(@Param('id') userId: string) {
     await this.authService.logoutAll(userId);
@@ -406,7 +454,7 @@ export class AdminAuthController {
   }
 
   @Post('invites')
-  @Roles('super_admin', 'investigator')
+  @RequirePermissions('users:manage')
   @ApiOperation({ summary: 'Create a new operator/investigator invite' })
   async createInvite(@Body() dto: CreateInviteDto, @Req() req: Request) {
     const creatorEmail = (req as any).user?.email;

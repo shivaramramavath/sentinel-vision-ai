@@ -20,21 +20,23 @@ import {
   UpdateStatusDto,
 } from './dto/missing-person.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
+import { RbacDataShapingInterceptor } from '../rbac/interceptors/rbac-data-shaping.interceptor';
 import { AuditAction } from '../audit/decorators/audit-action.decorator';
 import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
 
 @ApiTags('Missing Persons')
 @ApiBearerAuth()
 @Controller('missing-persons')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseInterceptors(RbacDataShapingInterceptor)
 @UseInterceptors(AuditInterceptor)
 export class MissingPersonsController {
   constructor(private readonly missingPersonsService: MissingPersonsService) {}
 
   @Post()
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('cases:update')
   @ApiOperation({ summary: 'Create missing person dossier (draft saves allowed)' })
   @AuditAction('CREATE_MISSING_PERSON', 'MissingPerson', (req, res) => res.personId)
   async create(@Body() dto: CreateMissingPersonDto, @Req() req: any) {
@@ -107,7 +109,7 @@ export class MissingPersonsController {
   }
 
   @Patch(':id')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('cases:update')
   @ApiOperation({ summary: 'Partial update with optimistic concurrency control (If-Match header, 409 on conflict)' })
   @ApiHeader({ name: 'if-match', required: false, description: 'Expected document version integer' })
   @AuditAction('UPDATE_MISSING_PERSON', 'MissingPerson', (req) => req.params.id)
@@ -122,7 +124,7 @@ export class MissingPersonsController {
   }
 
   @Post(':id/submit')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('cases:update')
   @ApiOperation({ summary: 'Submit dossier: validates mandatory fields + statutory authority + minimum references -> status=active' })
   @AuditAction('SUBMIT_MISSING_PERSON', 'MissingPerson', (req) => req.params.id)
   async submit(@Param('id') id: string, @Req() req: any) {
@@ -131,7 +133,7 @@ export class MissingPersonsController {
   }
 
   @Post(':id/last-seen')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('cases:update')
   @ApiOperation({ summary: 'Submit new last-seen information: appends history, recomputes reachable area, triggers auto-search' })
   @AuditAction('UPDATE_LAST_SEEN', 'MissingPerson', (req) => req.params.id)
   async addLastSeen(
@@ -144,7 +146,7 @@ export class MissingPersonsController {
   }
 
   @Post(':id/status')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('cases:update')
   @ApiOperation({ summary: 'Transition dossier lifecycle status (found/closed stops running jobs and schedules retention)' })
   @AuditAction('UPDATE_STATUS', 'MissingPerson', (req) => req.params.id)
   async updateStatus(

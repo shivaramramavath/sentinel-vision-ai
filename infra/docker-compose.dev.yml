@@ -118,17 +118,6 @@ services:
     networks:
       - sentinel_net
 
-  # ─── Mailpit (Local SMTP / Email Testing) ──────────────────────────
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: sentinel_mailpit
-    restart: unless-stopped
-    ports:
-      - '1025:1025' # SMTP
-      - '8025:8025' # Web UI & REST API
-    networks:
-      - sentinel_net
-
   # ─── MinIO ────────────────────────────────────────────────────────
   minio:
     image: minio/minio:latest

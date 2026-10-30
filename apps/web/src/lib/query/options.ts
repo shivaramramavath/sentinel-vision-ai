@@ -138,3 +138,10 @@ export const usersListQueryOptions = () =>
     queryKey: keys.users.all,
     queryFn: () => usersApi.list(),
   });
+
+export const currentUserQueryOptions = () =>
+  queryOptions({
+    queryKey: keys.users.me,
+    queryFn: () => usersApi.me(),
+    staleTime: 60 * 1000,
+  });

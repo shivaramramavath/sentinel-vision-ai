@@ -9,12 +9,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CaseSwitcher } from '@/components/shared/CaseSwitcher';
 import { useAlerts } from '@/hooks/use-alerts';
+import { useCurrentUser } from '@/hooks/use-users';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   Bell,
   Search,
   LogOut,
   ShieldAlert,
+  ShieldCheck,
+  Shield,
+  Settings,
+  User as UserIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,14 +31,61 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function formatUserRole(role?: string): string {
+  if (!role) return 'User';
+  const clean = role.toLowerCase().replace(/[\s_-]+/g, '');
+  switch (clean) {
+    case 'superadmin':
+      return 'Super Admin';
+    case 'investigator':
+      return 'Investigator';
+    case 'reviewer':
+      return 'Reviewer';
+    case 'viewer':
+      return 'Viewer';
+    case 'mobileoperator':
+      return 'Mobile Operator';
+    default:
+      return role.charAt(0).toUpperCase() + role.slice(1);
+  }
+}
+
+function getUserInitials(name?: string, email?: string): string {
+  const raw = (name || '').trim();
+  if (raw) {
+    const parts = raw.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return raw.slice(0, 2).toUpperCase();
+  }
+  if (email) {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return '';
+}
 
 export function Topbar() {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const { setCmdKOpen } = useUiStore();
-  const { user, logout, setUserRole } = useAuthStore();
+  const { logout } = useAuthStore();
+  const { data: currentUser, isLoading: isUserLoading } = useCurrentUser();
   const { data: alerts = [] } = useAlerts();
 
   const unreadAlerts = alerts.filter((a) => !a.read);
+
+  const displayName = currentUser?.fullName || currentUser?.name || currentUser?.email || 'User';
+  const initials = getUserInitials(currentUser?.fullName || currentUser?.name, currentUser?.email);
+  const badgeNumber = currentUser?.badgeNumber?.trim();
+  const department = currentUser?.department?.trim();
+
+  const handleLogout = async () => {
+    queryClient.clear();
+    await logout();
+  };
 
   // Format breadcrumb from pathname
   const pageTitle =
@@ -132,37 +185,94 @@ export function Topbar() {
         {/* User Profile Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Button
+              variant="ghost"
+              className="relative h-8 w-8 rounded-full border border-border/40 hover:border-border transition-colors"
+              aria-label="User profile options"
+            >
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatarUrl} alt={user?.name || 'User'} />
-                <AvatarFallback>{user?.name?.slice(0, 2) || 'AD'}</AvatarFallback>
+                {currentUser?.avatarUrl ? (
+                  <AvatarImage src={currentUser.avatarUrl} alt={displayName} />
+                ) : null}
+                <AvatarFallback className="font-mono text-xs bg-muted text-muted-foreground">
+                  {initials ? initials : <UserIcon className="h-4 w-4" />}
+                </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.name || (user as any)?.fullName || 'Insp. Sarah Vance'}</p>
-                <p className="text-xs leading-none text-muted-foreground font-mono">
-                  {user?.badgeNumber || 'SV-4902'} • {user?.role || 'Admin'}
-                </p>
+                {isUserLoading && !currentUser ? (
+                  <div className="space-y-1.5 py-1">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold leading-none text-foreground truncate">
+                      {displayName}
+                    </p>
+                    {currentUser?.email && (
+                      <p className="text-xs text-muted-foreground truncate font-mono">
+                        {currentUser.email}
+                      </p>
+                    )}
+                    {(badgeNumber || department) && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-muted-foreground font-mono">
+                        {badgeNumber && (
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-foreground font-medium">
+                            {badgeNumber}
+                          </span>
+                        )}
+                        {badgeNumber && department && <span>•</span>}
+                        {department && (
+                          <span className="truncate max-w-[140px] text-muted-foreground">
+                            {department}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setUserRole('super_admin')}>
-              Role: Super Admin
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setUserRole('investigator')}>
-              Role: Investigator
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setUserRole('reviewer')}>
-              Role: Reviewer
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setUserRole('viewer')}>
-              Role: Viewer
-            </DropdownMenuItem>
+
+            {/* Verified Server-Authorized Role (Informational status, strictly server-driven) */}
+            <div className="flex items-center justify-between px-2 py-1.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                Authorized Role
+              </span>
+              <Badge variant="outline" className="font-mono text-[10px] uppercase border-border/80 text-foreground">
+                {formatUserRole(currentUser?.role)}
+              </Badge>
+            </div>
+
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => logout()} className="text-rose-500">
+
+            {/* Account Settings & Security Links */}
+            <DropdownMenuItem asChild>
+              <Link href="/settings/account/security" className="cursor-pointer flex items-center">
+                <Shield className="mr-2 h-4 w-4 text-muted-foreground" />
+                Security & MFA
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings" className="cursor-pointer flex items-center">
+                <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            {/* Sign Out */}
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-rose-500 focus:text-rose-500 cursor-pointer"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </DropdownMenuItem>

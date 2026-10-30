@@ -12,13 +12,13 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AlertsService } from './alerts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 
 @ApiTags('Alerts')
 @ApiBearerAuth()
 @Controller('alerts')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}
 
@@ -102,7 +102,7 @@ export class AlertsController {
   }
 
   @Post('rules')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('alerts:act')
   @ApiOperation({ summary: 'Create a new alert trigger rule' })
   createRule(@Body() body: any, @Request() req: any) {
     const owner = req.user?.email || 'supervisor@sentinel.gov';
@@ -122,7 +122,7 @@ export class AlertsController {
   }
 
   @Post('channels')
-  @Roles('Super Admin')
+  @RequirePermissions('alerts:manage_rules')
   @ApiOperation({ summary: 'Register a new notification dispatch channel' })
   createChannel(@Body() body: any) {
     return this.alertsService.createChannel(body);
@@ -141,7 +141,7 @@ export class AlertsController {
   }
 
   @Post('oncall/override')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('alerts:act')
   @ApiOperation({ summary: 'Override active shift commander' })
   overrideOnCall(@Body('officerId') officerId: string) {
     return this.alertsService.overrideOnCall(officerId);

@@ -10,6 +10,8 @@ export interface LoginResult {
   accessToken?: string;
   user?: User;
   mfaRequired?: boolean;
+  mustChangePassword?: boolean;
+  mfaEnrollmentRequired?: boolean;
 }
 
 export interface SessionInfo {
@@ -47,8 +49,13 @@ export const authService = {
     email: string;
     password: string;
     inviteCode?: string;
+    consent?: boolean;
+    captchaToken?: string;
   }): Promise<{ message: string; requiresVerification: boolean }> {
-    const res = await apiClient.post<{ message: string; requiresVerification: boolean }>('/auth/register', data);
+    const res = await apiClient.post<{ message: string; requiresVerification: boolean }>('/auth/register', {
+      ...data,
+      consent: data.consent !== undefined ? Boolean(data.consent) : true,
+    });
     return res.data;
   },
 

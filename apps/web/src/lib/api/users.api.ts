@@ -17,6 +17,12 @@ export const usersApi = {
 
   me: async (): Promise<User> => {
     const res = await http.get<User>('/auth/me');
+    if (process.env.NODE_ENV !== 'production' && res.data) {
+      const parsed = UserSchema.safeParse(res.data);
+      if (!parsed.success) {
+        console.warn('Current user profile validation warning:', parsed.error.issues);
+      }
+    }
     return res.data;
   },
 

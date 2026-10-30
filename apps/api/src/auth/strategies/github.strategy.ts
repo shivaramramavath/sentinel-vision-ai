@@ -6,10 +6,28 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class GitHubStrategy extends PassportStrategy(Strategy, 'github') {
   constructor(private readonly configService: ConfigService) {
+    const clientID =
+      configService.get<string>('oauth.github.clientId') ||
+      configService.get<string>('app.githubClientId') ||
+      process.env.GITHUB_CLIENT_ID ||
+      'disabled-github-client-id';
+
+    const clientSecret =
+      configService.get<string>('oauth.github.clientSecret') ||
+      configService.get<string>('app.githubClientSecret') ||
+      process.env.GITHUB_CLIENT_SECRET ||
+      'disabled-github-secret';
+
+    const callbackURL =
+      configService.get<string>('oauth.github.callbackUrl') ||
+      configService.get<string>('app.githubCallbackUrl') ||
+      process.env.GITHUB_CALLBACK_URL ||
+      'http://localhost:3001/api/v1/auth/github/callback';
+
     super({
-      clientID: configService.get<string>('app.githubClientId') || 'placeholder-id',
-      clientSecret: configService.get<string>('app.githubClientSecret') || 'placeholder-secret',
-      callbackURL: configService.get<string>('app.githubCallbackUrl') || 'http://localhost:3001/api/v1/auth/github/callback',
+      clientID,
+      clientSecret,
+      callbackURL,
       scope: ['user:email'],
     });
   }

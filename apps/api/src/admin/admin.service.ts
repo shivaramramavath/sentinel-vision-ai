@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as crypto from 'crypto';
+import { AdminBootstrapService } from './admin-bootstrap.service';
 import type {
   AdminUserRecord,
   RbacPermissionMatrix,
@@ -240,6 +241,11 @@ export class AdminService {
     },
   ];
 
+  constructor(
+    @Optional()
+    private readonly adminBootstrapService?: AdminBootstrapService,
+  ) {}
+
   // USERS
   getUsers(): AdminUserRecord[] {
     return this.users;
@@ -263,14 +269,20 @@ export class AdminService {
     return newUser;
   }
 
-  updateUserRole(
+  async updateUserRole(
     userId: string,
     newRole: 'Super Admin' | 'Investigator' | 'Reviewer' | 'Viewer',
     changeReason: string,
     secondAdminApprovalEmail?: string,
-  ): AdminUserRecord {
+  ): Promise<AdminUserRecord> {
     const user = this.users.find((u) => u.id === userId);
     if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+    if (user.role === 'Super Admin' && newRole !== 'Super Admin') {
+      if (this.adminBootstrapService) {
+        await this.adminBootstrapService.assertNotLastActiveSuperAdmin(userId, 'demote');
+      }
+    }
 
     if (newRole === 'Super Admin' && !secondAdminApprovalEmail) {
       throw new BadRequestException('Granting Super Admin role strictly requires confirmation and a second administrator approval.');
@@ -287,6 +299,36 @@ export class AdminService {
     );
 
     return user;
+  }
+
+  async suspendUser(userId: string, changeReason: string): Promise<AdminUserRecord> {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+    if (user.role === 'Super Admin') {
+      if (this.adminBootstrapService) {
+        await this.adminBootstrapService.assertNotLastActiveSuperAdmin(userId, 'suspend');
+      }
+    }
+
+    user.status = 'suspended';
+    this.logAudit('SUSPEND_USER', 'User', userId, changeReason);
+    return user;
+  }
+
+  async deleteUser(userId: string): Promise<{ success: boolean }> {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+    if (user.role === 'Super Admin') {
+      if (this.adminBootstrapService) {
+        await this.adminBootstrapService.assertNotLastActiveSuperAdmin(userId, 'delete');
+      }
+    }
+
+    this.users = this.users.filter((u) => u.id !== userId);
+    this.logAudit('DELETE_USER', 'User', userId, 'Administrative user deletion');
+    return { success: true };
   }
 
   resetMfa(userId: string, changeReason: string): { success: boolean; message: string } {

@@ -31,23 +31,33 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client;
   }
 
+  isHealthy(): boolean {
+    return this.isConnected;
+  }
+
   async onModuleInit(): Promise<void> {
-    const host = this.configService.get<string>('app.redisHost', 'localhost');
-    const port = this.configService.get<number>('app.redisPort', 6379);
+    const host = this.configService.get<string>('redis.host') || this.configService.get<string>('app.redisHost', 'localhost');
+    const port = this.configService.get<number>('redis.port') || this.configService.get<number>('app.redisPort', 6379);
+    const password = this.configService.get<string>('redis.password');
+    const db = this.configService.get<number>('redis.db', 0);
+    const keyPrefix = this.configService.get<string>('redis.keyPrefix', 'sentinel:');
 
     try {
       this.client = new Redis({
         host,
         port,
+        password: password || undefined,
+        db,
+        keyPrefix,
         maxRetriesPerRequest: 1,
-        connectTimeout: 1500,
-        retryStrategy: (times) => (times <= 3 ? 500 : null),
+        connectTimeout: 2000,
+        retryStrategy: (times) => Math.min(times * 200, 3000),
         lazyConnect: true,
       });
 
       this.client.on('connect', () => {
         this.isConnected = true;
-        this.logger.log(`Connected to Redis at ${host}:${port}`);
+        this.logger.log(`Connected to Redis at ${host}:${port} (db: ${db}, keyPrefix: ${keyPrefix})`);
       });
 
       this.client.on('error', (err) => {
@@ -257,6 +267,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         this.memStorage.delete(k);
       }
     }
+  }
+
+  async publish(channel: string, message: string): Promise<number> {
+    if (this.isConnected && this.client) {
+      try {
+        return await this.client.publish(channel, message);
+      } catch (err: any) {
+        this.logger.warn(`Redis publish error (${channel}): ${err.message}`);
+      }
+    }
+    return 0;
   }
 
   // Token-Bucket Rate Limiter

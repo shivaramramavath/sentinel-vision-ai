@@ -14,8 +14,9 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { CasesService } from './cases.service';
 import { CreateCaseDto, UpdateCaseStatusDto } from './dto/create-case.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
+import { RbacDataShapingInterceptor } from '../rbac/interceptors/rbac-data-shaping.interceptor';
 import { CaseAccessGuard } from '../auth/guards/case-access.guard';
 import { AuditAction } from '../audit/decorators/audit-action.decorator';
 import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
@@ -23,7 +24,8 @@ import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
 @ApiTags('Cases')
 @ApiBearerAuth()
 @Controller('cases')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseInterceptors(RbacDataShapingInterceptor)
 @UseInterceptors(AuditInterceptor)
 export class CasesController {
   constructor(private readonly casesService: CasesService) {}
@@ -95,7 +97,7 @@ export class CasesController {
   }
 
   @Post()
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('cases:create')
   @ApiOperation({ summary: 'Create new missing person case' })
   @AuditAction('CREATE_CASE', 'Case', (req, res) => res.id)
   async createCase(@Body() dto: CreateCaseDto) {
@@ -103,7 +105,7 @@ export class CasesController {
   }
 
   @Patch(':id/status')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('cases:update')
   @UseGuards(CaseAccessGuard)
   @ApiOperation({ summary: 'Update case status' })
   @AuditAction('UPDATE_CASE_STATUS', 'Case', (req) => req.params.id)
@@ -115,7 +117,7 @@ export class CasesController {
   }
 
   @Post(':id/close')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('cases:close')
   @UseGuards(CaseAccessGuard)
   @ApiOperation({ summary: 'Execute case-closure workflow, lock evidence, and log final archival audit' })
   @AuditAction('CLOSE_CASE', 'Case', (req) => req.params.id)

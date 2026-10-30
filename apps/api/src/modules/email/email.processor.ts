@@ -26,12 +26,16 @@ export class EmailProcessor implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit(): Promise<void> {
-    const host = this.configService.get<string>('app.redisHost', 'localhost');
-    const port = this.configService.get<number>('app.redisPort', 6379);
+    const host = this.configService.get<string>('redis.host') || this.configService.get<string>('app.redisHost', 'localhost');
+    const port = this.configService.get<number>('redis.port') || this.configService.get<number>('app.redisPort', 6379);
+    const password = this.configService.get<string>('redis.password');
+    const db = this.configService.get<number>('redis.db', 0);
 
     const connection = {
       host,
       port,
+      password: password || undefined,
+      db,
       maxRetriesPerRequest: null,
       connectTimeout: 2000,
       retryStrategy: (times: number) => (times > 3 ? null : 200),
@@ -39,7 +43,7 @@ export class EmailProcessor implements OnModuleInit, OnModuleDestroy {
     };
 
     // DLQ Queue
-    this.dlq = new Queue(EMAIL_DLQ_NAME, { connection });
+    this.dlq = new Queue(EMAIL_DLQ_NAME, { connection, prefix: '{bull}' });
 
     // BullMQ Worker for Email processing
     this.worker = new Worker<EmailJobData>(
@@ -47,6 +51,7 @@ export class EmailProcessor implements OnModuleInit, OnModuleDestroy {
       async (job: Job<EmailJobData>) => this.processJob(job),
       {
         connection,
+        prefix: '{bull}',
         concurrency: 5,
         limiter: {
           max: 20,
@@ -112,7 +117,32 @@ export class EmailProcessor implements OnModuleInit, OnModuleDestroy {
       return { messageId: existingLog.messageId || 'idempotent_cached' };
     }
 
-    // 2. Render Template
+    // 2. Suppress test & non-routable domains in non-production environments
+    const nodeEnv = this.configService.get<string>('server.nodeEnv') || process.env.NODE_ENV;
+    const isTestOrLocalDomain =
+      /\.(local|internal|test)$/i.test(recipientEmail) ||
+      /@(example\.(com|org|net))$/i.test(recipientEmail);
+
+    if (nodeEnv !== 'production' && isTestOrLocalDomain) {
+      this.logger.log(`Suppressed email [${templateId}] to test domain ${recipientEmail} (environment: ${nodeEnv})`);
+      await this.emailLogModel.findOneAndUpdate(
+        { idempotencyKey: resolvedIdempotencyKey },
+        {
+          $set: {
+            templateId,
+            recipientHash,
+            status: 'suppressed',
+            messageId: `suppressed_${templateId}_${Date.now()}`,
+            attempts: job.attemptsMade,
+            sentAt: new Date(),
+          },
+        },
+        { upsert: true, new: true },
+      );
+      return { messageId: 'suppressed_test_domain' };
+    }
+
+    // 3. Render Template
     const templateFn = (emailTemplates as any)[templateId];
     if (!templateFn) {
       throw new Error(`Email template [${templateId}] does not exist.`);
@@ -120,7 +150,7 @@ export class EmailProcessor implements OnModuleInit, OnModuleDestroy {
 
     const rendered = templateFn(data);
 
-    // 3. Dispatch through MailTransport
+    // 4. Dispatch through MailTransport
     try {
       const result = await this.mailTransport.sendEmail({
         recipient: {

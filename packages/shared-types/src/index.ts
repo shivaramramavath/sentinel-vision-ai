@@ -1,3 +1,5 @@
+// Enums & RBAC
+export * from './rbac';
 // Enums
 export * from './enums';
 
@@ -65,6 +67,7 @@ export * from './schemas/dashboard.schema';
 export * from './schemas/evidence-reports.schema';
 export * from './schemas/alerts-inbox.schema';
 export * from './schemas/admin-management.schema';
+export * from './schemas/media-asset.schema';
 
 // Kafka Event Envelopes, Topics, and Payloads
 export * from './events/index';

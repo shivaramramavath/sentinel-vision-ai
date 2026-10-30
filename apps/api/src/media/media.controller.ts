@@ -1,7 +1,9 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
+  Req,
   HttpCode,
   HttpStatus,
   Logger,
@@ -16,6 +18,17 @@ export class MediaController {
   private readonly logger = new Logger(MediaController.name);
 
   constructor(private readonly mediaService: MediaService) {}
+
+  @Get('ice-servers')
+  @ApiOperation({
+    summary: 'Get WebRTC STUN/TURN ICE Servers',
+    description: 'Generates ephemeral TURN credentials for low-latency WebRTC NAT traversal',
+  })
+  @ApiResponse({ status: 200, description: 'ICE servers list with ephemeral TURN credentials' })
+  getIceServers(@Req() req: any) {
+    const userId = req.user?.id || 'viewer';
+    return this.mediaService.getIceServers(userId);
+  }
 
   @Post('auth')
   @HttpCode(HttpStatus.OK)

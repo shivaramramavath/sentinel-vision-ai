@@ -75,7 +75,7 @@ export default function SettingsPage() {
                   <Input disabled value="arcface-r100-v1" className="h-8 font-mono bg-muted/40" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Person Re-ID Model (256-dim)</Label>
+                  <Label className="text-xs">Person Re-ID Model (512-dim)</Label>
                   <Input disabled value="osnet-ain-x1.0-v1" className="h-8 font-mono bg-muted/40" />
                 </div>
                 <div className="space-y-1">
@@ -83,7 +83,7 @@ export default function SettingsPage() {
                   <Input disabled value="yolov8n-v1" className="h-8 font-mono bg-muted/40" />
                 </div>
                 <div className="rounded border bg-muted/20 p-2.5 text-[11px] text-muted-foreground">
-                  <strong>Strict Separation Rule:</strong> Face vectors (512d) and Re-ID vectors (256d) are stored
+                  <strong>Strict Separation Rule:</strong> Face vectors (512d) and Re-ID vectors (512d) are stored
                   in separate Pinecone indexes and are never concatenated.
                 </div>
               </CardContent>

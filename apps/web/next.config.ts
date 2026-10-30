@@ -86,12 +86,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/settings',
-        destination: '/admin/models',
+        destination: '/admin',
         permanent: false,
       },
       {
         source: '/settings/:path*',
-        destination: '/admin/models',
+        destination: '/admin',
         permanent: false,
       },
     ];

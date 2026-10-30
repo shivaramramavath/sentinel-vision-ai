@@ -48,8 +48,16 @@ import {
   Radio,
   Share2,
   X,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { usePermission } from '@/hooks/use-permission';
+import {
+  ADMIN_SECTIONS,
+  canAccessSection,
+  firstAccessibleSection,
+} from '@/config/admin-sections';
 import type {
   AdminUserRecord,
   RbacPermissionMatrix,
@@ -61,22 +69,9 @@ import type {
   RetentionPolicy,
   AdminAuditEntry,
   ServiceHealthStatus,
+  Role,
 } from '@sentinel/shared-types';
-
-const SECTIONS = [
-  { id: 'users', label: 'Users', icon: Users, desc: 'Personnel records, RBAC roles, MFA enforcement & active sessions' },
-  { id: 'roles', label: 'Roles & RBAC', icon: Shield, desc: 'Resource permissions matrix, scoping & access reviews' },
-  { id: 'teams', label: 'Teams', icon: Users, desc: 'Investigation units, on-call rotations & site assignments' },
-  { id: 'mobile-operators', label: 'Mobile Operators', icon: Smartphone, desc: 'Self-registered phone operators, device approvals & WebRTC streams' },
-  { id: 'models', label: 'AI Models', icon: Cpu, desc: 'Face ArcFace, Re-ID OSNet, YOLOv8 detectors & shadow evaluation' },
-  { id: 'thresholds', label: 'Thresholds & SLA', icon: Sliders, desc: 'Calibrated similarity bands, SLA limits & impact simulation' },
-  { id: 'queues', label: 'Queues & Pipeline', icon: Layers, desc: 'BullMQ queue depths, Kafka topic lag & DLQ replay tools' },
-  { id: 'integrations', label: 'Integrations', icon: Plug, desc: 'Pinecone, MediaMTX, MinIO, Redis, Kafka & write-only credentials' },
-  { id: 'retention', label: 'Retention & Privacy', icon: Clock, desc: 'CJIS/GDPR auto-pruning rules, legal holds & deletion previews' },
-  { id: 'audit', label: 'Audit Log', icon: History, desc: 'Immutable searchable ledger of all operator & configuration changes' },
-  { id: 'api', label: 'API Keys & Webhooks', icon: Key, desc: 'Scoped bearer tokens, webhook endpoints & delivery logs' },
-  { id: 'health', label: 'System Health', icon: Activity, desc: 'Target of top bar status chip — microservices status & p95 latencies' },
-];
+import { ROLE_META, ROLE_PERMISSIONS, ROLE_KEYS, roleLabel } from '@sentinel/shared-types';
 
 export default function AdminSectionPage({
   params,
@@ -85,8 +80,9 @@ export default function AdminSectionPage({
 }) {
   const router = useRouter();
   const { section } = use(params);
+  const { can, role, roleMeta, status } = usePermission();
 
-  const activeSection = SECTIONS.find((s) => s.id === section);
+  const activeSection = ADMIN_SECTIONS.find((s) => s.id === section);
   if (!activeSection) {
     notFound();
   }
@@ -113,6 +109,7 @@ export default function AdminSectionPage({
   const { data: users = [], refetch: refetchUsers } = useQuery<AdminUserRecord[]>({
     queryKey: ['admin', 'users'],
     queryFn: () => adminService.getUsers(),
+    enabled: status === 'success' && section === 'users' && can('users:read'),
   });
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
   const [inviteEmail, setInviteEmail] = useState<string>('');
@@ -120,29 +117,34 @@ export default function AdminSectionPage({
   const [inviteDept, setInviteDept] = useState<string>('Surveillance Triage');
   const [roleChangeUser, setRoleChangeUser] = useState<AdminUserRecord | null>(null);
   const [targetNewRole, setTargetNewRole] = useState<'Super Admin' | 'Investigator' | 'Reviewer' | 'Viewer'>('Investigator');
+  const [simulatorRole, setSimulatorRole] = useState<Role | 'all'>('all');
 
   // Roles Queries
   const { data: roles = [] } = useQuery<RbacPermissionMatrix[]>({
     queryKey: ['admin', 'roles'],
     queryFn: () => adminService.getRoles(),
+    enabled: status === 'success' && section === 'roles' && can('roles:read'),
   });
 
   // Teams Queries
   const { data: teams = [] } = useQuery<InvestigationTeam[]>({
     queryKey: ['admin', 'teams'],
     queryFn: () => adminService.getTeams(),
+    enabled: status === 'success' && section === 'teams' && can('users:read'),
   });
 
   // Models Queries
   const { data: models = [], refetch: refetchModels } = useQuery<RegisteredAiModel[]>({
     queryKey: ['admin', 'models'],
     queryFn: () => adminService.getModels(),
+    enabled: status === 'success' && section === 'models' && can('models:manage'),
   });
 
   // Thresholds Queries & State
   const { data: thresholds = [], refetch: refetchThresholds } = useQuery<ThresholdProfile[]>({
     queryKey: ['admin', 'thresholds'],
     queryFn: () => adminService.getThresholds(),
+    enabled: status === 'success' && section === 'thresholds' && (can('thresholds:propose') || can('thresholds:approve')),
   });
   const [impactPreviewResult, setImpactPreviewResult] = useState<ImpactPreviewResult | null>(null);
 
@@ -150,18 +152,21 @@ export default function AdminSectionPage({
   const { data: queues = [] } = useQuery<QueueLagTelemetry[]>({
     queryKey: ['admin', 'queues'],
     queryFn: () => adminService.getQueues(),
+    enabled: status === 'success' && section === 'queues' && can('admin:system'),
   });
 
   // Integrations Queries
   const { data: integrations = {} } = useQuery<Record<string, any>>({
     queryKey: ['admin', 'integrations'],
     queryFn: () => adminService.getIntegrations(),
+    enabled: status === 'success' && section === 'integrations' && can('integrations:manage'),
   });
 
   // Retention Queries & State
   const { data: retentionPolicies = [] } = useQuery<RetentionPolicy[]>({
     queryKey: ['admin', 'retention'],
     queryFn: () => adminService.getRetention(),
+    enabled: status === 'success' && section === 'retention' && can('retention:manage'),
   });
   const [deletionPreview, setDeletionPreview] = useState<any | null>(null);
 
@@ -169,12 +174,14 @@ export default function AdminSectionPage({
   const { data: auditLogs = [] } = useQuery<AdminAuditEntry[]>({
     queryKey: ['admin', 'audit'],
     queryFn: () => adminService.getAuditLog(),
+    enabled: status === 'success' && section === 'audit' && can('audit:read'),
   });
 
   // System Health Queries
   const { data: healthStatuses = [] } = useQuery<ServiceHealthStatus[]>({
     queryKey: ['admin', 'health'],
     queryFn: () => adminService.getSystemHealth(),
+    enabled: status === 'success' && section === 'health' && can('admin:system'),
   });
 
   const handleOpenChangeModal = (
@@ -205,6 +212,107 @@ export default function AdminSectionPage({
     }
   };
 
+  const hasAccess = canAccessSection(activeSection, can);
+  const firstAccessible = firstAccessibleSection(can);
+
+  if (status === 'loading') {
+    return (
+      <div className="space-y-4 pb-8">
+        <div className="flex items-center justify-between border-b pb-3 pt-1">
+          <div className="space-y-1">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <Skeleton className="h-6 w-28 rounded-full" />
+        </div>
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="w-60 min-w-[220px] space-y-2 hidden md:block">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <Skeleton key={idx} className="h-8 w-full rounded-lg" />
+            ))}
+          </div>
+          <div className="flex-1 space-y-4">
+            <Skeleton className="h-64 w-full rounded-lg" />
+            <Skeleton className="h-96 w-full rounded-lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'success' && !hasAccess) {
+    return (
+      <div className="space-y-4 pb-8">
+        <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b pb-3 pt-1">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              Administration
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              System configuration, biometric models, operator devices &amp; audit policies
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="font-mono text-emerald-500 border-emerald-500/40 text-xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block mr-1.5 animate-pulse" />
+              {roleLabel(role)}
+            </Badge>
+          </div>
+        </header>
+
+        <div className="flex flex-col md:flex-row gap-6">
+          <nav
+            aria-label="Admin Sections"
+            className="hidden md:block w-60 min-w-[220px] shrink-0 space-y-1 sticky top-16 h-fit"
+          >
+            {ADMIN_SECTIONS.filter((s) => canAccessSection(s, can)).map((s) => {
+              const Icon = s.icon;
+              return (
+                <Link
+                  key={s.id}
+                  href={`/admin/${s.id}`}
+                  title={s.label}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{s.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <main className="flex-1 min-w-0">
+            <Card className="border-destructive/30 bg-destructive/5 text-center p-8 max-w-lg mx-auto my-8">
+              <CardHeader className="items-center pb-2">
+                <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mb-2">
+                  <ShieldAlert className="h-6 w-6 text-destructive" />
+                </div>
+                <CardTitle className="text-lg font-bold">Access Denied (403)</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-1">
+                  You do not have permission to access the "{activeSection.label}" administration section with role {roleLabel(role)}.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
+                {firstAccessible && (
+                  <Button asChild size="sm" variant="default" className="text-xs w-full sm:w-auto">
+                    <Link href={`/admin/${firstAccessible}`}>
+                      Go to accessible section
+                    </Link>
+                  </Button>
+                )}
+                <Button asChild size="sm" variant="outline" className="text-xs w-full sm:w-auto">
+                  <Link href={roleMeta.landing || '/dashboard'}>
+                    Return to Operational Portal
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 pb-8">
       {/* Header */}
@@ -221,7 +329,7 @@ export default function AdminSectionPage({
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="font-mono text-emerald-500 border-emerald-500/40 text-xs">
             <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block mr-1.5 animate-pulse" />
-            Supervisor &amp; Admin Mode
+            {roleLabel(role)}
           </Badge>
         </div>
       </header>
@@ -234,7 +342,7 @@ export default function AdminSectionPage({
           onChange={(e) => router.push(`/admin/${e.target.value}`)}
           className="mt-1 w-full rounded-md border bg-card p-2 text-xs font-mono text-foreground focus:outline-none"
         >
-          {SECTIONS.map((s) => (
+          {ADMIN_SECTIONS.filter((s) => canAccessSection(s, can)).map((s) => (
             <option key={s.id} value={s.id}>
               {s.label}
             </option>
@@ -243,13 +351,13 @@ export default function AdminSectionPage({
       </div>
 
       {/* Main Admin Grid Layout: Left Nav + Right Content Pane */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div className="flex flex-col md:flex-row gap-6">
         {/* Left Sub-Navigation (Sticky) */}
         <nav
           aria-label="Admin Sections"
-          className="hidden md:block md:col-span-3 space-y-1 sticky top-16 h-fit"
+          className="hidden md:block w-60 min-w-[220px] shrink-0 space-y-1 sticky top-16 h-fit"
         >
-          {SECTIONS.map((s) => {
+          {ADMIN_SECTIONS.filter((s) => canAccessSection(s, can)).map((s) => {
             const Icon = s.icon;
             const isActive = s.id === section;
 
@@ -257,6 +365,7 @@ export default function AdminSectionPage({
               <Link
                 key={s.id}
                 href={`/admin/${s.id}`}
+                title={s.label}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
                   isActive
@@ -272,7 +381,7 @@ export default function AdminSectionPage({
         </nav>
 
         {/* Right Section Content */}
-        <main className="col-span-1 md:col-span-9 space-y-4">
+        <main className="flex-1 min-w-0 space-y-4">
           <div className="border-b pb-2 flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold tracking-tight text-foreground">
@@ -403,44 +512,101 @@ export default function AdminSectionPage({
 
           {/* ================= SECTION: ROLES ================= */}
           {section === 'roles' && (
-            <Card>
-              <CardHeader className="p-4 border-b bg-card">
-                <CardTitle className="text-sm font-semibold">Role-Based Access Control (RBAC) Permissions Matrix</CardTitle>
-                <p className="text-xs text-muted-foreground">Fine-grained permissions matrix across resources and identity operations</p>
-              </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono">
-                  <thead className="bg-muted/40 border-b text-[10px] uppercase text-muted-foreground">
-                    <tr>
-                      <th className="p-3">Resource</th>
-                      <th className="p-3">Super Admin</th>
-                      <th className="p-3">Investigator</th>
-                      <th className="p-3">Reviewer</th>
-                      <th className="p-3">Viewer</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/60">
-                    {[
-                      { res: 'Cases & Profiles', sa: 'Full Access', inv: 'Create / Edit', rev: 'Read Only', viw: 'Read Only' },
-                      { res: 'Candidate Sightings', sa: 'Full Access', inv: 'Review / Decide', rev: 'Review / Decide', viw: 'Read Only' },
-                      { res: 'Cryptographic Evidence', sa: 'Full Access + Purge', inv: 'Inspect / Export', rev: 'Inspect', viw: 'Inspect' },
-                      { res: 'Investigation Reports', sa: 'Approve & Sign', inv: 'Generate & Sign', rev: 'Draft', viw: 'Download' },
-                      { res: 'Surveillance Cameras', sa: 'Manage Fleet', inv: 'View & Stream', rev: 'View & Stream', viw: 'View Streams' },
-                      { res: 'User Accounts & Roles', sa: 'Manage & Audit', inv: 'None', rev: 'None', viw: 'None' },
-                      { res: 'Biometric Model Config', sa: 'Promote / Rollback', inv: 'Read Metrics', rev: 'None', viw: 'None' },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-muted/20">
-                        <td className="p-3 font-semibold text-foreground">{row.res}</td>
-                        <td className="p-3 text-emerald-500 font-semibold">{row.sa}</td>
-                        <td className="p-3 text-foreground">{row.inv}</td>
-                        <td className="p-3 text-muted-foreground">{row.rev}</td>
-                        <td className="p-3 text-muted-foreground">{row.viw}</td>
-                      </tr>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-lg border bg-card">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Role Simulator &amp; Permissions Preview</h3>
+                  <p className="text-xs text-muted-foreground">Select a role to preview active capabilities, landing page and timeouts</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground font-medium">View as:</span>
+                  <select
+                    value={simulatorRole}
+                    onChange={(e) => setSimulatorRole(e.target.value as any)}
+                    className="h-8 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="all">All Roles (Matrix View)</option>
+                    {ROLE_KEYS.map((k) => (
+                      <option key={k} value={k}>
+                        {ROLE_META[k].label}
+                      </option>
                     ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
+                  </select>
+                </div>
+              </div>
+
+              {simulatorRole !== 'all' && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card className="p-4">
+                    <span className="text-[10px] uppercase font-mono text-muted-foreground">Landing Page</span>
+                    <p className="font-mono text-sm font-semibold text-foreground mt-1">{ROLE_META[simulatorRole].landing}</p>
+                  </Card>
+                  <Card className="p-4">
+                    <span className="text-[10px] uppercase font-mono text-muted-foreground">Realm</span>
+                    <p className="font-mono text-sm font-semibold text-foreground mt-1 uppercase">{ROLE_META[simulatorRole].realm}</p>
+                  </Card>
+                  <Card className="p-4">
+                    <span className="text-[10px] uppercase font-mono text-muted-foreground">MFA Policy</span>
+                    <p className="font-mono text-sm font-semibold text-foreground mt-1 uppercase">{ROLE_META[simulatorRole].mfaPolicy}</p>
+                  </Card>
+                  <Card className="p-4">
+                    <span className="text-[10px] uppercase font-mono text-muted-foreground">Idle Timeout</span>
+                    <p className="font-mono text-sm font-semibold text-foreground mt-1">{ROLE_META[simulatorRole].idleTimeoutMinutes} min</p>
+                  </Card>
+                </div>
+              )}
+
+              <Card>
+                <CardHeader className="p-4 border-b bg-card">
+                  <CardTitle className="text-sm font-semibold">Canonical RBAC Permissions Matrix</CardTitle>
+                  <p className="text-xs text-muted-foreground">Single Source of Truth defined in @sentinel/shared-types across 46 resource actions</p>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="bg-muted/40 border-b text-[10px] uppercase text-muted-foreground">
+                      <tr>
+                        <th className="p-3">Canonical Role</th>
+                        <th className="p-3">Realm</th>
+                        <th className="p-3">Allowed Permissions</th>
+                        <th className="p-3">Max Sessions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {ROLE_KEYS.filter((k) => simulatorRole === 'all' || simulatorRole === k).map((roleKey) => {
+                        const meta = ROLE_META[roleKey];
+                        const perms = ROLE_PERMISSIONS[roleKey];
+                        return (
+                          <tr key={roleKey} className="hover:bg-muted/20">
+                            <td className="p-3 font-semibold text-foreground">
+                              <div>{meta.label}</div>
+                              <span className="text-[10px] font-mono text-muted-foreground">({roleKey})</span>
+                            </td>
+                            <td className="p-3">
+                              <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                                {meta.realm}
+                              </Badge>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-wrap gap-1 max-w-2xl">
+                                {perms.map((p) => (
+                                  <span
+                                    key={p}
+                                    className="px-1.5 py-0.5 rounded bg-muted/60 text-[10px] font-mono text-foreground border border-border/40"
+                                  >
+                                    {p}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-3 font-mono text-foreground">{meta.maxSessions}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* ================= SECTION: TEAMS ================= */}
@@ -886,7 +1052,7 @@ export default function AdminSectionPage({
                 <Input
                   value={secondAdminEmailText}
                   onChange={(e) => setSecondAdminEmailText(e.target.value)}
-                  placeholder="supervisor@sentinel.gov"
+                  placeholder="admin2@sentinel.local"
                   className="h-8 text-xs font-mono"
                 />
               </div>

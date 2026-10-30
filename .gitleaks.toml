@@ -1,0 +1,27 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "sentinel-admin-password-secret"
+description = "Detected assigned ADMIN_PASSWORD secret in commit or source"
+regex = '''(?i)ADMIN_PASSWORD\s*[:=]\s*['"]?[a-zA-Z0-9!@#$%^&*()_+~`\-={}\[\]:;"'<>,.?\/]{8,}['"]?'''
+secretGroup = 0
+keywords = ["ADMIN_PASSWORD"]
+
+[allowlist]
+description = "Global allowlist for examples, mocks and build artifacts"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.local\.example$''',
+  '''apps/web/\.next/''',
+  '''apps/api/dist/''',
+  '''apps/api/src/config/__tests__/''',
+  '''apps/api/src/mocks/''',
+  '''node_modules/'''
+]
+regexes = [
+  '''replace_with_''',
+  '''REPLACE-WITH''',
+  '''<generate-via-''',
+  '''sentinel_turn_secret_2026'''
+]

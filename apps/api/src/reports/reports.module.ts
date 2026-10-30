@@ -9,6 +9,7 @@ import { QueueModule } from '../common/queues/queue.module';
 import { CasesModule } from '../cases/cases.module';
 import { JourneysModule } from '../journeys/journeys.module';
 import { EvidenceModule } from '../evidence/evidence.module';
+import { StorageModule } from '../common/storage/storage.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { EvidenceModule } from '../evidence/evidence.module';
     CasesModule,
     JourneysModule,
     EvidenceModule,
+    StorageModule,
   ],
   controllers: [ReportsController],
   providers: [ReportsService, ReportsProcessor, PdfDossierService],

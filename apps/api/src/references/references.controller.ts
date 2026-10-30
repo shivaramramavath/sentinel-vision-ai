@@ -22,8 +22,8 @@ import {
   ReprocessReferenceDto,
 } from './dto/references.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { CaseAccessGuard } from '../auth/guards/case-access.guard';
 import { AuditAction } from '../audit/decorators/audit-action.decorator';
 import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
@@ -31,13 +31,13 @@ import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
 @ApiTags('References')
 @ApiBearerAuth()
 @Controller('references')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(AuditInterceptor)
 export class ReferencesController {
   constructor(private readonly referencesService: ReferencesService) {}
 
   @Post('presign')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('references:manage')
   @ApiOperation({ summary: 'Generate 5-minute presigned MinIO upload URL (validates type, size <= 15MB, MIME allowlist)' })
   @AuditAction('PRESIGN_REFERENCE_UPLOAD', 'ReferenceImage', (req) => req.body.caseId)
   async presign(@Body() dto: PresignReferenceUploadDto) {
@@ -45,7 +45,7 @@ export class ReferencesController {
   }
 
   @Post()
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('references:manage')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data', 'application/json')
   @ApiOperation({ summary: 'Register uploaded reference image (strips EXIF, enforces resolution bounds, detects duplicates, emits references.uploaded)' })
@@ -60,7 +60,7 @@ export class ReferencesController {
   }
 
   @Patch(':id')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('references:manage')
   @ApiOperation({ summary: 'Update reference metadata (type label, photoTakenAt, source, selectedFaceBox, isPrimary)' })
   @AuditAction('PATCH_REFERENCE', 'ReferenceImage', (req) => req.params.id)
   async patchReference(
@@ -73,7 +73,7 @@ export class ReferencesController {
   }
 
   @Delete(':id')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('references:manage')
   @ApiOperation({ summary: 'Soft delete reference + remove vectors from Pinecone + increment setVersion' })
   @AuditAction('DELETE_REFERENCE', 'ReferenceImage', (req) => req.params.id)
   async deleteReference(
@@ -85,7 +85,7 @@ export class ReferencesController {
   }
 
   @Post(':id/replace')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('references:manage')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data', 'application/json')
   @ApiOperation({ summary: 'Replace enrolled reference image (purges old vectors, increments setVersion, emits references.uploaded)' })
@@ -101,7 +101,7 @@ export class ReferencesController {
   }
 
   @Post(':id/reprocess')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('references:manage')
   @ApiOperation({ summary: 'Re-run analysis on reference image (e.g. after manual crop adjustment)' })
   @AuditAction('REPROCESS_REFERENCE', 'ReferenceImage', (req) => req.params.id)
   async reprocessReference(
@@ -115,7 +115,7 @@ export class ReferencesController {
 
   // Legacy case-scoped upload adapter
   @Post('../cases/:caseId/references/upload')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('references:manage')
   @UseGuards(CaseAccessGuard)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')

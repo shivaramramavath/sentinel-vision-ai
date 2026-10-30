@@ -8,7 +8,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { AuthService } from './auth.service';
 import { User } from '../users/schemas/user.schema';
@@ -256,6 +256,38 @@ describe('AuthService', () => {
       await expect(
         authService.refreshSession(refreshRes.newRefreshTokenCookieValue),
       ).rejects.toThrow(/security violation/i);
+    });
+  });
+
+  describe('getCurrentUserProfile', () => {
+    it('should return database-backed profile for authenticated user without exposing secrets', async () => {
+      const profile = await authService.getCurrentUserProfile('user_123');
+
+      expect(profile).toBeDefined();
+      expect(profile.id).toBe('user_123');
+      expect(profile.email).toBe('sarah.vance@sentinel.gov');
+      expect(profile.fullName).toBe('Insp. Sarah Vance');
+      expect(profile.badgeNumber).toBe('INV-4821');
+      expect(profile.role).toBe('investigator');
+      expect(profile.status).toBe('active');
+
+      // Crucial security check: Ensure secrets are not returned
+      expect((profile as any).passwordHash).toBeUndefined();
+      expect((profile as any).mfa?.secretEnc).toBeUndefined();
+      expect((profile as any).mfa?.recoveryCodesHashed).toBeUndefined();
+    });
+
+    it('should throw NotFoundException if user record does not exist in database', async () => {
+      await expect(authService.getCurrentUserProfile('nonexistent_user')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException if user account is suspended or rejected', async () => {
+      mockUser.status = 'suspended';
+      await expect(authService.getCurrentUserProfile('user_123')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });

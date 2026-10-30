@@ -9,12 +9,20 @@
     "test": "turbo run test",
     "type-check": "turbo run type-check",
     "seed": "pnpm --filter @sentinel/api seed",
+    "seed:accounts": "pnpm --filter @sentinel/api seed:accounts",
     "seed:reset": "pnpm --filter @sentinel/api seed:reset",
     "seed:check": "pnpm --filter @sentinel/api seed:check",
     "seed:refresh-times": "pnpm --filter @sentinel/api seed:refresh-times",
+    "env:rotate": "node scripts/gen-secrets.mjs",
+    "env:check": "pnpm --filter @sentinel/api env:check",
+    "pinecone:init": "pnpm --filter @sentinel/api pinecone:init",
+    "kafka:init": "pnpm --filter @sentinel/api kafka:init",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\" --ignore-path .prettierignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\" --ignore-path .prettierignore",
-    "prepare": "husky"
+    "prepare": "husky",
+    "migrate:roles": "pnpm --filter @sentinel/api migrate:roles",
+    "admin:create": "pnpm --filter @sentinel/api admin:create",
+    "admin:reset-password": "pnpm --filter @sentinel/api admin:reset-password"
   },
   "devDependencies": {
     "turbo": "^2.3.3",
@@ -27,8 +35,13 @@
     "typescript": "^5.7.3"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": ["eslint --fix", "prettier --write"],
-    "*.{json,md,yaml,yml,css}": ["prettier --write"]
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml,css}": [
+      "prettier --write"
+    ]
   },
   "engines": {
     "node": ">=20.0.0",

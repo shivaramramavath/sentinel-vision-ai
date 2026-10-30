@@ -156,18 +156,18 @@ paths:
 
 To support remote investigators accessing live video behind symmetric NATs or corporate firewalls:
 1. **Coturn Server**:
-   - Configured with static shared secret: `--static-auth-secret=sentinel_turn_secret_2026`.
+   - Configured with static shared secret: `--static-auth-secret=`.
    - Realm: `sentinel.local`.
 2. **MediaMTX Integration (`webrtcICEServers2`)**:
    ```yaml
    webrtcICEServers2:
      - url: turn:coturn:3478?transport=udp
        username: "AUTH_SECRET"
-       password: "sentinel_turn_secret_2026"
+       password: ""
        clientOnly: false
      - url: turn:coturn:3478?transport=tcp
        username: "AUTH_SECRET"
-       password: "sentinel_turn_secret_2026"
+       password: ""
        clientOnly: false
      - url: stun:coturn:3478
    ```

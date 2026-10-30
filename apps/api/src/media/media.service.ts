@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'crypto';
+import { createHmac, randomUUID } from 'crypto';
 import { CamerasService } from '../cameras/cameras.service';
 import { KafkaService } from '../common/kafka/kafka.service';
 import { RedisService } from '../common/redis/redis.service';
@@ -222,5 +222,28 @@ export class MediaService {
     } catch {
       return false;
     }
+  }
+
+  getIceServers(userId = 'viewer'): { iceServers: any[]; ttl: number } {
+    const stunUrls = this.configService.get<string[]>('media.stunUrls') || ['stun:stun.l.google.com:19302'];
+    const turnUrls = this.configService.get<string[]>('media.turnUrls') || [];
+    const turnSecret = this.configService.get<string>('media.turnSecret') || '';
+    const ttl = this.configService.get<number>('media.turnCredentialTtlSeconds', 600);
+
+    const iceServers: any[] = [{ urls: stunUrls }];
+
+    if (turnUrls.length > 0 && turnSecret) {
+      const expiryUnix = Math.floor(Date.now() / 1000) + ttl;
+      const username = `${expiryUnix}:${userId}`;
+      const password = createHmac('sha1', turnSecret).update(username).digest('base64');
+
+      iceServers.push({
+        urls: turnUrls,
+        username,
+        credential: password,
+      });
+    }
+
+    return { iceServers, ttl };
   }
 }

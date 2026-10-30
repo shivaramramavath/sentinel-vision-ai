@@ -1,3 +1,4 @@
+import { Role } from './rbac';
 /**
  * Embedding kind — face and Re-ID are strictly separate feature spaces.
  * NEVER concatenate or mix these two kinds.
@@ -53,22 +54,11 @@ export const UserRole = {
   REVIEWER: 'reviewer',
   VIEWER: 'viewer',
   MOBILE_OPERATOR: 'mobile_operator',
-  // Backwards compatibility
   ADMIN: 'super_admin',
   OPERATOR: 'investigator',
   ANALYST: 'reviewer',
 } as const;
-export type UserRole = 'super_admin' | 'investigator' | 'reviewer' | 'viewer' | 'mobile_operator';
-
-export function normalizeRole(role: string): UserRole {
-  const lower = (role || '').toLowerCase().replace(/\s+/g, '_');
-  if (lower === 'super_admin' || lower === 'admin') return 'super_admin';
-  if (lower === 'investigator' || lower === 'operator') return 'investigator';
-  if (lower === 'reviewer' || lower === 'analyst') return 'reviewer';
-  if (lower === 'viewer') return 'viewer';
-  if (lower === 'mobile_operator') return 'mobile_operator';
-  return 'viewer';
-}
+export type UserRole = Role;
 
 export const Sex = {
   MALE: 'male',

@@ -31,11 +31,11 @@ import { AuditModule } from '../audit/audit.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret:
+          config.get<string>('auth.jwtAccessSecret') ||
           config.get<string>('app.jwtAccessSecret') ||
-          config.get<string>('app.jwtSecret') ||
-          'dev-secret-change-in-production',
+          config.get<string>('app.jwtSecret'),
         signOptions: {
-          expiresIn: config.get<string>('app.jwtAccessExpiresIn', '15m'),
+          expiresIn: config.get<string>('auth.jwtAccessTtl') || config.get<string>('app.jwtAccessExpiresIn', '15m'),
         },
       }),
     }),

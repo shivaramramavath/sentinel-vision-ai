@@ -193,6 +193,36 @@ export class PlaybackStreamingService {
 
     const clipKey = `evidence/${dto.caseId}/${cameraId}_sighting_${dto.sightingId}.mp4`;
 
+    let clipUri = `s3://camera-recordings/${clipKey}`;
+    let assetId = `clip_${dto.sightingId}`;
+
+    try {
+      const syntheticClipBuffer = Buffer.from(
+        `SENTINEL_MP4_CLIP_${cameraId}_${dto.sightingId}_${dto.sightingTs}`,
+      );
+      const asset = await this.storageService.upload({
+        buffer: syntheticClipBuffer,
+        kind: 'clip',
+        entityId: dto.sightingId,
+        caseId: dto.caseId,
+        mimeType: 'video/mp4',
+        legalHold: true,
+        uploadedBy: 'system',
+        context: {
+          caseId: dto.caseId,
+          cameraId,
+          sightingId: dto.sightingId,
+          capturedAt: dto.sightingTs,
+        },
+        tags: ['clip', 'evidence', cameraId],
+      });
+      assetId = asset.assetId;
+      const signed = await this.storageService.getSignedUrl(asset.assetId, { purpose: 'view' });
+      clipUri = signed.url;
+    } catch (err: any) {
+      this.logger.warn(`Storage upload for clip ${dto.sightingId} failed: ${err.message}`);
+    }
+
     this.logger.log(
       `Preserved event clip: ${clipKey} (SHA-256: ${clipHash.slice(0, 16)}...) covering ${matchingSegments.length} segments`,
     );
@@ -202,7 +232,8 @@ export class PlaybackStreamingService {
       cameraId,
       sightingId: dto.sightingId,
       caseId: dto.caseId,
-      clipUri: `s3://camera-recordings/${clipKey}`,
+      assetId,
+      clipUri,
       sha256Checksum: clipHash,
       tier: 'evidence',
       segmentsCount: matchingSegments.length,

@@ -106,6 +106,15 @@ export class Evidence {
   @Prop({ default: '' })
   referenceImageUrl: string;
 
+  @Prop({ default: '' })
+  mediaAssetId?: string;
+
+  @Prop({ default: '' })
+  frameAssetId?: string;
+
+  @Prop({ default: '' })
+  cropAssetId?: string;
+
   @Prop({ required: true })
   sha256Hash: string; // Primary hash
 

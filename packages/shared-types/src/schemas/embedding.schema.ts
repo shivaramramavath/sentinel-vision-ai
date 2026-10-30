@@ -7,12 +7,12 @@ import { EmbeddingKind } from '../enums';
  *
  * IMPORTANT: face and reid embeddings are in SEPARATE feature spaces.
  * face vectors: 512-dim (ArcFace)
- * reid vectors: 256-dim (OSNet)
+ * reid vectors: 512-dim (OSNet / FastReID)
  * These must NEVER be concatenated or compared cross-kind.
  */
 export const EmbeddingRecordSchema = z.object({
   id: z.string(),
-  /** Face (ArcFace 512-dim) OR Reid (OSNet 256-dim) — never mixed */
+  /** Face (ArcFace 512-dim) OR Reid (ReID 512-dim) — never mixed */
   kind: z.nativeEnum(EmbeddingKind),
   caseId: z.string(),
   personId: z.string().optional(),

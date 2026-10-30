@@ -10,3 +10,4 @@ export * from './SightingCard';
 export * from './CaseHeader';
 export * from './CaseSwitcher';
 export * from './PersonCommand';
+export * from './Can';

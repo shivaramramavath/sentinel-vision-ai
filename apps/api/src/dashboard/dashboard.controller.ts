@@ -10,13 +10,13 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
@@ -75,7 +75,7 @@ export class DashboardController {
   }
 
   @Get('dashboard/team')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('dashboard:read')
   @ApiOperation({ summary: 'Get team workload distribution and active on-call status (supervisor only)' })
   async getTeamWorkload() {
     return this.dashboardService.getTeamWorkload();

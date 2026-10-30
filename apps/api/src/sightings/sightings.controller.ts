@@ -14,15 +14,17 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { SightingsService } from './sightings.service';
 import { ReviewSightingDto } from './dto/review-sighting.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
+import { RbacDataShapingInterceptor } from '../rbac/interceptors/rbac-data-shaping.interceptor';
 import { AuditAction } from '../audit/decorators/audit-action.decorator';
 import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
 
 @ApiTags('Sightings')
 @ApiBearerAuth()
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseInterceptors(RbacDataShapingInterceptor)
 @UseInterceptors(AuditInterceptor)
 export class SightingsController {
   constructor(private readonly sightingsService: SightingsService) {}
@@ -76,7 +78,7 @@ export class SightingsController {
   }
 
   @Patch('sightings/:id/review')
-  @Roles('Super Admin', 'Investigator', 'Reviewer', 'super_admin', 'investigator', 'reviewer')
+  @RequirePermissions('sightings:decide')
   @ApiOperation({ summary: 'Human verification decision on possible sighting match' })
   @AuditAction('REVIEW_SIGHTING', 'Sighting', (req) => req.params.id)
   async reviewSighting(
@@ -89,7 +91,7 @@ export class SightingsController {
   }
 
   @Post('sightings/:id/decision')
-  @Roles('Super Admin', 'Investigator', 'Reviewer', 'super_admin', 'investigator', 'reviewer')
+  @RequirePermissions('sightings:decide')
   @ApiOperation({ summary: 'Submit operator sighting verification decision' })
   @AuditAction('REVIEW_SIGHTING', 'Sighting', (req) => req.params.id)
   async submitDecision(
@@ -105,7 +107,7 @@ export class SightingsController {
   }
 
   @Post('sightings/:id/promote-to-reference')
-  @Roles('Super Admin', 'Investigator', 'Reviewer')
+  @RequirePermissions('sightings:decide')
   @ApiOperation({ summary: 'Promote verified sighting crop to reference (type cctv_crop_verified, dual approver for high priority)' })
   @AuditAction('PROMOTE_SIGHTING_TO_REFERENCE', 'Sighting', (req) => req.params.id)
   async promoteToReference(

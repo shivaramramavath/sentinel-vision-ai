@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional } from '@nestjs/common';
 import { Worker, Job } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
@@ -8,6 +8,7 @@ import { SystemReport, SystemReportDocument } from './schemas/report.schema';
 import { CasesService } from '../cases/cases.service';
 import { JourneysService } from '../journeys/journeys.service';
 import { EvidenceService } from '../evidence/evidence.service';
+import { StorageService } from '../common/storage/storage.service';
 
 export interface ReportJobData {
   reportId: string;
@@ -31,6 +32,8 @@ export class ReportsProcessor implements OnModuleInit, OnModuleDestroy {
     private readonly evidenceService: EvidenceService,
     @InjectModel(SystemReport.name)
     private readonly reportModel: Model<SystemReportDocument>,
+    @Optional()
+    private readonly storageService?: StorageService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -120,9 +123,29 @@ export class ReportsProcessor implements OnModuleInit, OnModuleDestroy {
     // Store buffer in memory for instant download
     ReportsProcessor.generatedPdfs.set(data.reportId, pdfBuffer);
 
+    // Upload to StorageService (Cloudinary / MinIO)
+    let downloadUrl = `/api/v1/reports/${data.reportId}/download?expires=${Date.now() + 3600000}`;
+    if (this.storageService) {
+      try {
+        const asset = await this.storageService.upload({
+          buffer: pdfBuffer,
+          kind: 'report',
+          entityId: data.reportId,
+          caseId: data.caseId,
+          mimeType: 'application/pdf',
+          uploadedBy: data.requestedBy,
+          context: { caseId: data.caseId, reportId: data.reportId },
+          tags: ['report', 'dossier', 'pdf'],
+        });
+        const signed = await this.storageService.getSignedUrl(asset.assetId, { purpose: 'download' });
+        downloadUrl = signed.url;
+      } catch (err: any) {
+        this.logger.warn(`Storage upload for report ${data.reportId} failed: ${err.message}`);
+      }
+    }
+
     // Update Report record in Mongo
     const sizeMb = (pdfBuffer.length / (1024 * 1024)).toFixed(2);
-    const downloadUrl = `/api/v1/reports/${data.reportId}/download?expires=${Date.now() + 3600000}`;
 
     await this.reportModel.updateOne(
       { id: data.reportId },

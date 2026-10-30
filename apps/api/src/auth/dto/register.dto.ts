@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class RegisterDto {
   @ApiProperty({ example: 'Insp. Sarah Vance' })
@@ -25,8 +26,9 @@ export class RegisterDto {
   inviteCode?: string;
 
   @ApiProperty({ example: true })
+  @Transform(({ value }) => (value === undefined ? true : value === true || value === 'true'))
   @IsBoolean()
-  consent: boolean;
+  consent: boolean = true;
 
   @ApiPropertyOptional({ example: 'turnstile_token_xyz' })
   @IsString()

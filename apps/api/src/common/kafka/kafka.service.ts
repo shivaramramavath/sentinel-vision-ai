@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Kafka, Producer } from 'kafkajs';
+import { Kafka, Partitioners, Producer } from 'kafkajs';
 import { EventEnvelope } from '@sentinel/shared-types';
 
 @Injectable()
@@ -20,7 +20,12 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         brokers,
         retry: { retries: 2 },
       });
-      this.producer = this.kafka.producer();
+      this.producer = this.kafka.producer({
+        // Explicitly use DefaultPartitioner to suppress the KafkaJS
+        // partitioner deprecation warning and to maintain per-camera
+        // ordering when messages are keyed by cameraId.
+        createPartitioner: Partitioners.DefaultPartitioner,
+      });
       await this.producer.connect();
       this.isConnected = true;
       this.logger.log(`Kafka Producer connected to brokers: ${brokers.join(',')}`);

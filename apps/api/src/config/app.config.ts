@@ -20,17 +20,30 @@ export default registerAs('app', () => ({
   minioBucketPhotos: process.env.MINIO_BUCKET_PHOTOS ?? 'reference-photos',
   minioBucketThumbnails: process.env.MINIO_BUCKET_THUMBNAILS ?? 'sighting-thumbnails',
   minioBucketCrops: process.env.MINIO_BUCKET_CROPS ?? 'frame-crops',
+
+  // Storage Abstraction & Cloudinary
+  storageDriver: (process.env.STORAGE_DRIVER ?? 'cloudinary') as 'cloudinary' | 'minio',
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME ?? '',
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY ?? '',
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET ?? '',
+  cloudinaryUrl: process.env.CLOUDINARY_URL ?? '',
+  cloudinaryRootFolder: process.env.CLOUDINARY_ROOT_FOLDER ?? 'sentinel/dev',
+  cloudinarySignedUrlTtlSeconds: parseInt(process.env.CLOUDINARY_SIGNED_URL_TTL_SECONDS ?? '300', 10),
+  cloudinaryNotificationUrl: process.env.CLOUDINARY_NOTIFICATION_URL ?? '',
+  cloudinaryMaxImageMb: parseInt(process.env.CLOUDINARY_MAX_IMAGE_MB ?? '25', 10),
+  cloudinaryMaxVideoMb: parseInt(process.env.CLOUDINARY_MAX_VIDEO_MB ?? '100', 10),
+  recordingDriver: (process.env.RECORDING_DRIVER ?? 'minio') as 'minio' | 'local' | 'off',
   pineconeApiKey: process.env.PINECONE_API_KEY ?? '',
   pineconeFaceIndex: process.env.PINECONE_FACE_INDEX ?? 'face-embeddings',
   pineconeReidIndex: process.env.PINECONE_REID_INDEX ?? 'reid-embeddings',
 
   // Auth & Token Settings
-  jwtSecret: process.env.JWT_ACCESS_SECRET ?? process.env.JWT_SECRET ?? 'sentinel-access-secret-development-key-32chars',
-  jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'sentinel-access-secret-development-key-32chars',
+  jwtSecret: process.env.JWT_ACCESS_SECRET ?? process.env.JWT_SECRET ?? '',
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? '',
   jwtAccessExpiresIn: process.env.JWT_ACCESS_TTL ?? '15m',
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? 'sentinel-refresh-secret-development-key-32chars',
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? '',
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_TTL ?? '30d',
-  cookieSecret: process.env.COOKIE_SECRET ?? 'sentinel-cookie-secret-development-key-32chars',
+  cookieSecret: process.env.COOKIE_SECRET ?? '',
   cookieDomain: process.env.COOKIE_DOMAIN ?? 'localhost',
   refreshCookieName: process.env.REFRESH_COOKIE_NAME ?? 'sentinel_rt',
 
@@ -42,16 +55,6 @@ export default registerAs('app', () => ({
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET ?? '',
   githubCallbackUrl: process.env.GITHUB_CALLBACK_URL ?? 'http://localhost:3001/api/v1/auth/github/callback',
 
-  // Email Config
-  emailTransport: process.env.EMAIL_TRANSPORT ?? 'smtp-dev',
-  brevoApiKey: process.env.BREVO_API_KEY ?? '',
-  brevoSenderName: process.env.BREVO_SENDER_NAME ?? 'Sentinel Vision AI',
-  brevoSenderEmail: process.env.BREVO_SENDER_EMAIL ?? 'notifications@sentinelvision.ai',
-  brevoTimeoutSeconds: parseInt(process.env.BREVO_TIMEOUT_SECONDS ?? '10', 10),
-  brevoMaxRetries: parseInt(process.env.BREVO_MAX_RETRIES ?? '2', 10),
-  smtpDevHost: process.env.SMTP_DEV_HOST ?? 'localhost',
-  smtpDevPort: parseInt(process.env.SMTP_DEV_PORT ?? '1025', 10),
-
   // Auth Governance
   authAllowedEmailDomains: (process.env.AUTH_ALLOWED_EMAIL_DOMAINS ?? '')
     .split(',')
@@ -62,11 +65,11 @@ export default registerAs('app', () => ({
   seedDefaultPassword: process.env.SEED_DEFAULT_PASSWORD ?? 'Sentinel@2026',
 
   // WebRTC / Mobile Streaming
-  turnSecret: process.env.TURN_SECRET ?? 'sentinel_turn_secret_2026',
+  turnSecret: process.env.TURN_SECRET ?? '',
   mediaBaseUrl: process.env.MEDIA_BASE_URL ?? 'http://localhost:8889',
   turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? '',
 
-  cameraSecretKey: process.env.CAMERA_SECRET_KEY ?? 'sentinel-camera-master-aes-key-32b',
+  cameraSecretKey: process.env.CAMERA_SECRET_KEY ?? '',
   mediamtxNodes: [
     {
       id: 'node-edge-01',

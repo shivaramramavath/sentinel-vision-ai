@@ -12,15 +12,15 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { EvidenceService } from './evidence.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { AuditAction } from '../audit/decorators/audit-action.decorator';
 import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
 
 @ApiTags('Evidence')
 @ApiBearerAuth()
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(AuditInterceptor)
 export class EvidenceController {
   constructor(private readonly evidenceService: EvidenceService) {}
@@ -66,8 +66,28 @@ export class EvidenceController {
     return this.evidenceService.findById(id);
   }
 
+  @Get('evidence/:id/signed-url')
+  @ApiOperation({ summary: 'Obtain authenticated signed delivery URL with custody chain tracking' })
+  @AuditAction('READ_EVIDENCE_SIGNED_URL', 'Evidence', (req) => req.params.id)
+  async getEvidenceSignedUrl(
+    @Param('id') id: string,
+    @Query('type') type?: 'frame' | 'crop',
+    @Query('purpose') purpose?: 'view' | 'thumbnail' | 'download' | 'inference',
+    @Request() req?: any,
+  ) {
+    const actor = req?.user
+      ? { userId: req.user.id || req.user.sub, email: req.user.email, role: req.user.role }
+      : { email: 'investigator@sentinel.gov', role: 'Investigator' };
+
+    return this.evidenceService.getSignedUrl(id, {
+      type,
+      purpose,
+      actor,
+    });
+  }
+
   @Post('evidence/:id/verify')
-  @Roles('Super Admin', 'Investigator', 'Reviewer')
+  @RequirePermissions('evidence:read')
   @ApiOperation({ summary: 'Verify cryptographic SHA-256 integrity of single evidence item' })
   async verifyItem(@Param('id') id: string, @Request() req: any) {
     const actor = req.user?.email || 'investigator@sentinel.gov';
@@ -75,7 +95,7 @@ export class EvidenceController {
   }
 
   @Post('evidence/verify-all')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('evidence:export')
   @ApiOperation({ summary: 'Trigger vault-wide cryptographic integrity verification job' })
   async verifyAll(@Request() req: any) {
     const actor = req.user?.email || 'admin@sentinel.gov';
@@ -83,7 +103,7 @@ export class EvidenceController {
   }
 
   @Post('evidence/:id/legal-hold')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('evidence:export')
   @ApiOperation({ summary: 'Toggle legal hold status with audit justification' })
   async setLegalHold(
     @Param('id') id: string,
@@ -96,7 +116,7 @@ export class EvidenceController {
   }
 
   @Post('evidence/:id/redactions')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('evidence:export')
   @ApiOperation({ summary: 'Generate a derived privacy-redacted copy of evidence' })
   async createRedaction(
     @Param('id') id: string,
@@ -114,14 +134,14 @@ export class EvidenceController {
   }
 
   @Post('custody/verify-chain')
-  @Roles('Super Admin', 'Investigator', 'Reviewer')
+  @RequirePermissions('evidence:read')
   @ApiOperation({ summary: 'Verify mathematical integrity of the append-only hash chain' })
   async verifyCustodyChain(@Body('evidenceId') evidenceId?: string) {
     return this.evidenceService.verifyChain(evidenceId);
   }
 
   @Post('exports')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('evidence:export')
   @ApiOperation({ summary: 'Generate cryptographic ZIP export package with manifest and proofs' })
   async createExportPackage(@Body() body: { caseId: string; itemIds?: string[] }, @Request() req: any) {
     const actor = req.user?.email || 'investigator@sentinel.gov';

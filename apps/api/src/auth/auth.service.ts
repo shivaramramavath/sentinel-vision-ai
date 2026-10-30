@@ -24,19 +24,26 @@ import { EmailService } from '../modules/email/email.service';
 import { AuditService } from '../audit/audit.service';
 import { validatePasswordPolicy } from './utils/password-policy.util';
 import { RegisterDto } from './dto/register.dto';
-import { CreateInviteDto } from './dto/auth-requests.dto';
+import { CreateInviteDto, UpdateProfileDto } from './dto/auth-requests.dto';
 
 export interface AuthTokens {
   accessToken: string;
   refreshTokenCookieValue: string;
+  mustChangePassword?: boolean;
+  mfaEnrollmentRequired?: boolean;
   user: {
     id: string;
     email: string;
+    name?: string;
     fullName: string;
     role: UserRole;
     badgeNumber: string;
+    department?: string;
+    avatarUrl?: string;
     status: string;
     mfaEnabled: boolean;
+    mustChangePassword?: boolean;
+    mfaEnrollmentRequired?: boolean;
   };
 }
 
@@ -448,14 +455,21 @@ export class AuthService {
     return {
       accessToken,
       refreshTokenCookieValue: `${session._id}.${tokenSecret}`,
+      mustChangePassword: Boolean(user.mustChangePassword),
+      mfaEnrollmentRequired: Boolean(user.mfaEnrollmentRequired),
       user: {
         id: String(user._id),
         email: user.email,
+        name: user.fullName || '',
         fullName: user.fullName,
         role: user.role,
-        badgeNumber: user.badgeNumber,
+        badgeNumber: user.badgeNumber || '',
+        department: user.department || '',
+        avatarUrl: user.avatarUrl || '',
         status: user.status,
         mfaEnabled: user.mfa?.enabled || false,
+        mustChangePassword: Boolean(user.mustChangePassword),
+        mfaEnrollmentRequired: Boolean(user.mfaEnrollmentRequired),
       },
     };
   }
@@ -551,11 +565,16 @@ export class AuthService {
       user: {
         id: String(user._id),
         email: user.email,
+        name: user.fullName || '',
         fullName: user.fullName,
         role: user.role,
-        badgeNumber: user.badgeNumber,
+        badgeNumber: user.badgeNumber || '',
+        department: user.department || '',
+        avatarUrl: user.avatarUrl || '',
         status: user.status,
         mfaEnabled: user.mfa?.enabled || false,
+        mustChangePassword: Boolean(user.mustChangePassword),
+        mfaEnrollmentRequired: Boolean(user.mfaEnrollmentRequired),
       },
     };
   }
@@ -689,7 +708,15 @@ export class AuthService {
     validatePasswordPolicy(newPass, [user.fullName, user.email]);
 
     user.passwordHash = await this.hashPassword(newPass);
+    user.mustChangePassword = false;
     await user.save();
+
+    await this.auditService.recordLog({
+      actor: { userId: String(user._id), email: user.email, role: user.role },
+      action: 'user.password.change',
+      entity: { type: 'User', id: String(user._id) },
+      correlationId: 'change-password',
+    });
 
     const webUrl = this.configService.get<string>('app.webUrl', 'http://localhost:3000');
     await this.emailService.enqueue('passwordChanged', {
@@ -860,7 +887,15 @@ export class AuthService {
 
     user.mfa.enabled = true;
     user.mfa.recoveryCodesHashed = hashedCodes;
+    user.mfaEnrollmentRequired = false;
     await user.save();
+
+    await this.auditService.recordLog({
+      actor: { userId: String(user._id), email: user.email, role: user.role },
+      action: 'user.mfa.enroll',
+      entity: { type: 'User', id: String(user._id) },
+      correlationId: 'enable-mfa',
+    });
 
     return { recoveryCodes: plainCodes };
   }
@@ -1005,14 +1040,84 @@ export class AuthService {
     };
   }
 
+  /**
+   * Fetch real database-backed profile for the verified authenticated user.
+   * Strips all internal secrets, password hashes, and MFA secrets.
+   */
+  async getCurrentUserProfile(userId: string) {
+    const q: any = this.userModel.findById(userId);
+    const user = typeof q?.exec === 'function' ? await q.exec() : await q;
+    if (!user) {
+      throw new NotFoundException('User record not found in database');
+    }
+    if (user.status === 'suspended' || user.status === 'rejected') {
+      throw new ForbiddenException(`Account is ${user.status}`);
+    }
+
+    return {
+      id: String(user._id),
+      email: user.email,
+      name: user.fullName || '',
+      fullName: user.fullName || '',
+      role: user.role,
+      badgeNumber: user.badgeNumber || '',
+      department: user.department || '',
+      status: user.status,
+      avatarUrl: user.avatarUrl || '',
+      mfaEnabled: user.mfa?.enabled || false,
+      mustChangePassword: Boolean(user.mustChangePassword),
+      mfaEnrollmentRequired: Boolean(user.mfaEnrollmentRequired),
+      createdVia: user.createdVia,
+      createdAt: (user as any).createdAt ? (user as any).createdAt.toISOString() : undefined,
+      lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
+    };
+  }
+
+  /**
+   * Update the profile details of the verified authenticated user in MongoDB.
+   */
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const q: any = this.userModel.findById(userId);
+    const user = typeof q?.exec === 'function' ? await q.exec() : await q;
+    if (!user) {
+      throw new NotFoundException('User record not found in database');
+    }
+
+    if (dto.fullName !== undefined) {
+      user.fullName = dto.fullName.trim();
+    }
+    if (dto.avatarUrl !== undefined) {
+      user.avatarUrl = dto.avatarUrl.trim();
+    }
+    await user.save();
+
+    await this.auditService.recordLog({
+      actor: { userId: String(user._id), email: user.email, role: user.role },
+      action: 'user.profile.update',
+      entity: { type: 'User', id: String(user._id) },
+      correlationId: 'update-profile',
+    });
+
+    return this.getCurrentUserProfile(userId);
+  }
+
   // --- Helper Methods ---
 
   private async signAccessToken(user: UserDocument, sessionId: string, jti: string): Promise<string> {
     const secret =
+      this.configService.get<string>('auth.jwtAccessSecret') ||
       this.configService.get<string>('app.jwtAccessSecret') ||
       this.configService.get<string>('app.jwtSecret') ||
       'dev-secret-change-in-production';
-    const expiresIn = this.configService.get<string>('app.jwtAccessExpiresIn', '15m');
+    const expiresIn =
+      this.configService.get<string>('auth.jwtAccessTtl') ||
+      this.configService.get<string>('app.jwtAccessExpiresIn', '15m');
+
+    let permVersion = 0;
+    if (this.redisService && typeof this.redisService.isHealthy === 'function' && this.redisService.isHealthy()) {
+      const v = await this.redisService.get(`user:permVersion:${user._id}`);
+      if (v) permVersion = parseInt(v, 10);
+    }
 
     return this.jwtService.signAsync(
       {
@@ -1022,7 +1127,10 @@ export class AuthService {
         fullName: user.fullName,
         badgeNumber: user.badgeNumber,
         sessionId,
+        permVersion,
         aud: 'web',
+        mustChangePassword: Boolean(user.mustChangePassword),
+        mfaEnrollmentRequired: Boolean(user.mfaEnrollmentRequired),
       },
       {
         secret,
@@ -1030,6 +1138,74 @@ export class AuthService {
         jwtid: jti,
       },
     );
+  }
+
+  /**
+   * Step-up re-authentication using password or TOTP MFA code.
+   * Returns a stepUpToken and caches the elevation in Redis for 5 minutes (300s).
+   */
+  async stepUp(
+    userId: string,
+    sessionId?: string,
+    password?: string,
+    mfaCode?: string,
+  ): Promise<{ stepUpToken: string; expiresIn: number }> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+
+    let verified = false;
+
+    if (mfaCode && user.mfa?.secretEnc) {
+      const isValid = verifySync({ token: mfaCode.trim(), secret: user.mfa.secretEnc }).valid;
+      if (isValid) {
+        verified = true;
+      }
+    }
+
+    if (!verified && password && user.passwordHash) {
+      const isPasswordValid = await this.verifyPassword(user.passwordHash, password);
+      if (isPasswordValid) {
+        verified = true;
+      }
+    }
+
+    if (!verified) {
+      throw new UnauthorizedException('Invalid security credentials for step-up elevation.');
+    }
+
+    const secret =
+      this.configService.get<string>('auth.jwtAccessSecret') ||
+      this.configService.get<string>('app.jwtAccessSecret') ||
+      'dev-secret-change-in-production';
+    const expiresIn = 300; // 5 minutes
+
+    const stepUpToken = await this.jwtService.signAsync(
+      {
+        sub: String(user._id),
+        sessionId,
+        purpose: 'step-up',
+      },
+      {
+        secret,
+        expiresIn: `${expiresIn}s`,
+      },
+    );
+
+    if (sessionId && this.redisService.isHealthy()) {
+      const redisKey = `stepup:session:${user._id}:${sessionId}`;
+      await this.redisService.set(redisKey, 'valid', expiresIn);
+    }
+
+    await this.auditService.recordLog({
+      actor: { userId: String(user._id), email: user.email, role: user.role },
+      action: 'user.auth.step_up',
+      entity: { type: 'User', id: String(user._id) },
+      correlationId: 'step-up',
+    });
+
+    return { stepUpToken, expiresIn };
   }
 
   private parseDeviceLabel(userAgent: string): string {

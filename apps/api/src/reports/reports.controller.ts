@@ -14,15 +14,15 @@ import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { AuditAction } from '../audit/decorators/audit-action.decorator';
 import { AuditInterceptor } from '../audit/interceptors/audit.interceptor';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
 @Controller('reports')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(AuditInterceptor)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
@@ -40,7 +40,7 @@ export class ReportsController {
   }
 
   @Post()
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('reports:generate')
   @ApiOperation({ summary: 'Generate a new audit-ready dossier report in PDF or CSV format' })
   @AuditAction('GENERATE_REPORT', 'Report', (req, res) => res.id)
   async generateReport(
@@ -55,7 +55,7 @@ export class ReportsController {
   }
 
   @Post(':id/approve')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('reports:approve')
   @ApiOperation({ summary: 'Supervisor workflow: approve, lock, hash and digitally sign report' })
   async approveReport(@Param('id') id: string, @Req() req: any) {
     const supervisorEmail = req.user?.email || 'supervisor@sentinel.gov';
@@ -63,7 +63,7 @@ export class ReportsController {
   }
 
   @Post(':id/share')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('reports:generate')
   @ApiOperation({ summary: 'Create time-limited access share link' })
   async shareReport(
     @Param('id') id: string,
@@ -74,20 +74,21 @@ export class ReportsController {
   }
 
   @Get('schedules')
+  @RequirePermissions('reports:read')
   @ApiOperation({ summary: 'List recurring report schedules' })
   getSchedules() {
     return this.reportsService.getSchedules();
   }
 
   @Post('schedules')
-  @Roles('Super Admin', 'Investigator')
+  @RequirePermissions('reports:generate')
   @ApiOperation({ summary: 'Create a new recurring report schedule' })
   createSchedule(@Body() body: any) {
     return this.reportsService.createSchedule(body);
   }
 
   @Get(':id/download')
-  @Roles('Super Admin', 'Investigator', 'Reviewer', 'Viewer')
+  @RequirePermissions('reports:read')
   @ApiOperation({ summary: 'Download generated PDF report via signed link with expiry' })
   @ApiResponse({ status: 200, description: 'Streams PDF binary' })
   async downloadReport(

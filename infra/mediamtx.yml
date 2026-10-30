@@ -84,11 +84,11 @@ webrtcHandshakeTimeout: 10s
 webrtcICEServers2:
   - url: turn:coturn:3478?transport=udp
     username: "AUTH_SECRET"
-    password: "sentinel_turn_secret_2026"
+    password: "${TURN_SECRET}"
     clientOnly: false
   - url: turn:coturn:3478?transport=tcp
     username: "AUTH_SECRET"
-    password: "sentinel_turn_secret_2026"
+    password: "${TURN_SECRET}"
     clientOnly: false
   - url: stun:coturn:3478
 

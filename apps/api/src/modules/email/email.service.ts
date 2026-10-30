@@ -11,15 +11,20 @@ export class EmailService {
   private emailQueue: Queue;
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.get<string>('app.redisHost', 'localhost');
-    const port = this.configService.get<number>('app.redisPort', 6379);
+    const host = this.configService.get<string>('redis.host') || this.configService.get<string>('app.redisHost', 'localhost');
+    const port = this.configService.get<number>('redis.port') || this.configService.get<number>('app.redisPort', 6379);
+    const password = this.configService.get<string>('redis.password');
+    const db = this.configService.get<number>('redis.db', 0);
 
     this.emailQueue = new Queue(EMAIL_QUEUE_NAME, {
       connection: {
         host,
         port,
+        password: password || undefined,
+        db,
         maxRetriesPerRequest: null,
       },
+      prefix: '{bull}',
       defaultJobOptions: EMAIL_DEFAULT_JOB_OPTIONS,
     });
     this.emailQueue.on('error', () => null);

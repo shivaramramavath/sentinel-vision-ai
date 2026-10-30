@@ -67,6 +67,7 @@ export default function RegisterPage() {
         email: email.trim(),
         password,
         inviteCode: inviteCode.trim() ? inviteCode.trim() : undefined,
+        consent: consented,
       });
 
       setRegisteredSuccess(true);

@@ -18,7 +18,6 @@ interface AuthState {
   login: (email: string, pass: string, mfaCode?: string) => Promise<LoginResultState>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
-  setUserRole: (role: User['role']) => void;
   setUser: (user: User | null) => void;
 }
 
@@ -41,6 +40,14 @@ export const useAuthStore = create<AuthState>()(
           }
 
           let user = data.user;
+          if (user) {
+            if (data.mustChangePassword !== undefined) {
+              user.mustChangePassword = data.mustChangePassword;
+            }
+            if (data.mfaEnrollmentRequired !== undefined) {
+              user.mfaEnrollmentRequired = data.mfaEnrollmentRequired;
+            }
+          }
           if (!user && data.accessToken) {
             try {
               user = await userService.getCurrentUser();
@@ -129,13 +136,6 @@ export const useAuthStore = create<AuthState>()(
         })();
 
         return activeRefreshPromise;
-      },
-
-      setUserRole: (role) => {
-        const u = get().user;
-        if (u) {
-          set({ user: { ...u, role } });
-        }
       },
 
       setUser: (user) => {

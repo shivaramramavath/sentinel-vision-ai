@@ -28,15 +28,19 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   public serverAdapter: ExpressAdapter;
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.get<string>('app.redisHost', 'localhost');
-    const port = this.configService.get<number>('app.redisPort', 6379);
+    const host = this.configService.get<string>('redis.host') || this.configService.get<string>('app.redisHost', 'localhost');
+    const port = this.configService.get<number>('redis.port') || this.configService.get<number>('app.redisPort', 6379);
+    const password = this.configService.get<string>('redis.password');
+    const db = this.configService.get<number>('redis.db', 0);
 
     const connection = {
       host,
       port,
+      password: password || undefined,
+      db,
       maxRetriesPerRequest: null,
-      connectTimeout: 1000,
-      retryStrategy: (times: number) => (times > 2 ? null : 200),
+      connectTimeout: 2000,
+      retryStrategy: (times: number) => (times > 3 ? null : 200),
       lazyConnect: true,
     };
 
@@ -53,18 +57,21 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
     this.searchQueue = new Queue('search', {
       connection,
+      prefix: '{bull}',
       defaultJobOptions,
     });
     this.searchQueue.on('error', () => null);
 
     this.reportQueue = new Queue('report', {
       connection,
+      prefix: '{bull}',
       defaultJobOptions,
     });
     this.reportQueue.on('error', () => null);
 
     this.maintenanceQueue = new Queue('maintenance', {
       connection,
+      prefix: '{bull}',
       defaultJobOptions,
     });
     this.maintenanceQueue.on('error', () => null);

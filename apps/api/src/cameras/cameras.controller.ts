@@ -23,8 +23,8 @@ import {
 import { CamerasService } from './cameras.service';
 import { CameraStatus } from './schemas/camera.schema';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../rbac/guards/permissions.guard';
+import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { CreateCameraDto } from './dto/create-camera.dto';
 import { UpdateCameraDto } from './dto/update-camera.dto';
 import { TestConnectionDto } from './dto/test-connection.dto';
@@ -55,6 +55,9 @@ export class CamerasController {
 
   // ─── Connection Probe (ffprobe) ──────────────────────────────────
   @Post('test-connection')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Test RTSP/IP camera connection via ffprobe (timeout 8s)',
@@ -67,8 +70,8 @@ export class CamerasController {
 
   // ─── Camera Registration ─────────────────────────────────────────
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin', 'Investigator')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Register a new camera (CCTV, Mobile, USB, File)' })
   async createCamera(@Body() dto: CreateCameraDto, @Req() req: any) {
@@ -77,6 +80,9 @@ export class CamerasController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'List surveillance cameras with optional status and zone filters' })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'location', required: false })
@@ -88,6 +94,9 @@ export class CamerasController {
   }
 
   @Get('geojson')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Retrieve camera locations as GeoJSON FeatureCollection (Redis cached)' })
   async getGeoJson(
     @Query('siteId') siteId?: string,
@@ -97,6 +106,9 @@ export class CamerasController {
   }
 
   @Get('nearby')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Discover cameras within radius via Redis GEO / $geoNear' })
   async getNearby(
     @Query('lat') lat: number,
@@ -107,6 +119,9 @@ export class CamerasController {
   }
 
   @Get('next-search')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('searches:run')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Rank candidate CCTV cameras to search next based on reachability & heading' })
   async getNextCamerasToSearch(
     @Query('fromCameraId') fromCameraId: string,
@@ -117,14 +132,17 @@ export class CamerasController {
   }
 
   @Get('topology')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Fetch camera network transit topology' })
   async getTopology() {
     return this.camerasService.getTopology();
   }
 
   @Put('topology/:from/:to')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('topology:edit')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Configure or calibrate transit edge between two cameras' })
   async updateTopology(
@@ -136,8 +154,8 @@ export class CamerasController {
   }
 
   @Patch('topology/transitions/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin', 'super_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('topology:edit')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update specific topology transition edge' })
   async patchTransition(@Param('id') id: string, @Body() dto: any) {
@@ -147,8 +165,8 @@ export class CamerasController {
 
   // ─── ONVIF Discovery ─────────────────────────────────────────────
   @Post('discover/onvif')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin', 'Investigator')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Probe site subnet for ONVIF NVTs via WS-Discovery' })
   async discoverOnvif(@Query('subnet') subnet?: string) {
@@ -157,8 +175,8 @@ export class CamerasController {
 
   // ─── Bulk CSV Import ─────────────────────────────────────────────
   @Post('bulk-import')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Bulk import cameras via CSV text with dry-run verification' })
   async bulkImport(@Body() dto: BulkImportDto, @Req() req: any) {
@@ -168,12 +186,18 @@ export class CamerasController {
 
   // ─── Bandwidth Budget & Multi-Node Capacity ───────────────────────
   @Get('bandwidth/report')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('admin:system')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get multi-node bandwidth ingestion report and storage forecast' })
   async getBandwidthReport() {
     return this.camerasService.getBandwidthReport();
   }
 
   @Post('bandwidth/estimate')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Estimate bandwidth budget and storage from camera count, bitrate, and recording mode' })
   async estimateBandwidth(@Body() dto: BandwidthEstimateDto) {
@@ -182,20 +206,26 @@ export class CamerasController {
 
   // ─── Single Camera Operations ────────────────────────────────────
   @Get(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get camera details by ID' })
   async getCamera(@Param('id') id: string) {
     return this.camerasService.findById(id);
   }
 
   @Get(':id/gaps')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get gap-aware recording disruption records for camera' })
   async getCameraGaps(@Param('id') id: string) {
     return this.camerasService.getRecordingGaps(id);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin', 'Investigator')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update camera metadata, policies, location, or stream configuration' })
   async updateCamera(
@@ -206,8 +236,8 @@ export class CamerasController {
   }
 
   @Post(':id/enable')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin', 'Investigator')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable camera and re-add stream path to MediaMTX' })
   async enableCamera(@Param('id') id: string) {
@@ -215,8 +245,8 @@ export class CamerasController {
   }
 
   @Post(':id/disable')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin', 'Investigator')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Disable camera and tear down MediaMTX path' })
   async disableCamera(@Param('id') id: string) {
@@ -224,6 +254,8 @@ export class CamerasController {
   }
 
   @Post(':id/mobile-telemetry')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Periodic GPS and device status updates from paired mobile camera PWA' })
   async updateMobileTelemetry(
     @Param('id') id: string,
@@ -233,6 +265,8 @@ export class CamerasController {
   }
 
   @Post(':id/clock-sync')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'NTP-style round-trip clock sync for accurate cross-camera temporal alignment' })
   async syncClock(
@@ -243,12 +277,18 @@ export class CamerasController {
   }
 
   @Get(':id/sampler-metrics')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get live frame sampler diagnostics (fps in/out, dropped frames, motion skipped %, latency)' })
   async getSamplerMetrics(@Param('id') id: string) {
     return this.camerasService.getSamplerMetrics(id);
   }
 
   @Post(':id/sample-fps')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:manage')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Dynamically configure adaptive sampling rate (e.g. 2-8 FPS) via Redis control key' })
   async setSampleFps(
@@ -259,19 +299,26 @@ export class CamerasController {
   }
 
   @Get(':id/health')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get real-time health and last 1-hour time-series samples for uptime chart' })
   async getCameraHealth(@Param('id') id: string) {
     return this.camerasService.getHealthHistory(id);
   }
 
   @Get(':id/snapshot')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:view_live')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Retrieve on-demand snapshot frame JPEG' })
   async getCameraSnapshot(@Param('id') id: string) {
     return this.camerasService.getSnapshot(id);
   }
 
   @Get(':id/playback-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:view_recordings')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Mint short-lived 60-second read token for WebRTC (WHEP) or HLS playback' })
   async getPlaybackToken(@Param('id') id: string, @Req() req: any) {
@@ -279,15 +326,19 @@ export class CamerasController {
     return this.camerasService.generatePlaybackToken(id, viewerId);
   }
 
-  // ─── Realtime Health Ingest & Tracks ─────────────────────────────
+  // ─── Realtime Health Ingest & Tracks (internal service endpoints) ──
   @Post('health')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Ingest camera health telemetry pulse' })
+  @ApiOperation({ summary: 'Ingest camera health telemetry pulse (service token or JWT)' })
   async recordHealth(@Body() body: any) {
     return this.camerasService.updateCameraHealth(body);
   }
 
   @Post('tracks/telemetry')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Ingest ByteTrack person track telemetry for spatial indexing' })
   async recordTrackTelemetry(@Body() body: any) {
@@ -296,6 +347,9 @@ export class CamerasController {
   }
 
   @Get('tracks/nearby')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Query active tracks situated within radius via Redis GEO' })
   async getNearbyTracks(
     @Query('lat') lat: number,
@@ -308,8 +362,10 @@ export class CamerasController {
 
   // ─── Phase C3: Storage, Playback & Evidentiary Retentions ──────────
   @Post(':id/segments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Index a newly uploaded video segment in MongoDB' })
+  @ApiOperation({ summary: 'Index a newly uploaded video segment in MongoDB (service-to-service)' })
   async recordSegment(
     @Param('id') id: string,
     @Body() dto: CreateVideoSegmentDto,
@@ -319,6 +375,9 @@ export class CamerasController {
   }
 
   @Get(':id/timeline')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:view_recordings')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get playback timeline intervals, gaps, and motion markers' })
   async getTimeline(
     @Param('id') id: string,
@@ -331,6 +390,9 @@ export class CamerasController {
   }
 
   @Get(':id/playback/playlist.m3u8')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('cameras:view_recordings')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Serve dynamic HLS VOD playlist generated on the fly from indexed segments' })
   async getHlsPlaylist(
     @Param('id') id: string,
@@ -347,7 +409,8 @@ export class CamerasController {
   }
 
   @Post(':id/clips/export')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('evidence:export')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Export watermarked video clip with optional face blur' })
   async exportClip(
@@ -360,6 +423,9 @@ export class CamerasController {
   }
 
   @Post(':id/event-clip')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('sightings:decide')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cut candidate sighting event clip (-10s to +20s) and put under case legal hold' })
   async createEventClip(
@@ -369,16 +435,10 @@ export class CamerasController {
     return this.playbackService.createEventClip(id, dto);
   }
 
-  @Post('retention/purge')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Super Admin')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Trigger automated data retention purge (deletes expired segments & vectors)' })
-  async purgeRetention() {
-    return this.storageLifecycleService.purgeExpiredSegments();
-  }
-
   @Get('storage/report')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('retention:manage')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get per-camera storage breakdown report (Hot, Warm, Evidence tiers)' })
   async getStorageReport() {
     return this.storageLifecycleService.getStorageReport();

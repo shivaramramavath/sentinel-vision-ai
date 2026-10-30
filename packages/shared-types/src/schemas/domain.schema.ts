@@ -1,3 +1,4 @@
+import { ROLE_KEYS } from '../rbac';
 import { z } from 'zod';
 import { UserRole } from '../enums';
 
@@ -109,7 +110,9 @@ export const UserSchema = z.object({
   failedLoginCount: z.number().default(0),
   lockedUntil: z.coerce.date().nullable().optional(),
   lastLoginAt: z.coerce.date().nullable().optional(),
-  createdVia: z.enum(['password', 'google', 'github', 'invite']).default('password'),
+  createdVia: z.enum(['password', 'google', 'github', 'invite', 'bootstrap']).default('password'),
+  mustChangePassword: z.boolean().default(false).optional(),
+  mfaEnrollmentRequired: z.boolean().default(false).optional(),
   active: z.boolean().default(true).optional(),
   createdAt: z.string().optional(),
 });

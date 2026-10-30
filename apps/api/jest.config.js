@@ -6,8 +6,16 @@ module.exports = {
   moduleNameMapper: {
     '^@sentinel/shared-types$': '<rootDir>/../../packages/shared-types/src/index.ts',
   },
+  transform: {
+    '^.+\\.(t|j)sx?$': [
+      'ts-jest',
+      {
+        isolatedModules: true,
+      },
+    ],
+  },
   transformIgnorePatterns: [
-    'node_modules/(?!(@scure|@otplib|otplib)/)',
+    'node_modules/(?!.*(@scure|@noble|@otplib|otplib))',
   ],
   collectCoverageFrom: ['src/**/*.ts', '!src/main.ts', '!src/**/*.module.ts'],
 };

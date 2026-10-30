@@ -148,19 +148,21 @@ export class ReferencesService {
     }
 
     const referenceId = `ref_${randomUUID().substring(0, 8)}`;
-    const extension = originalName.split('.').pop() || 'jpg';
-    const objectName = `${dto.caseId}/${referenceId}.${extension}`;
 
     // 5. Upload sanitized image to storage
-    const originalUri = await this.storageService.uploadFile(
-      'reference-photos',
-      objectName,
-      cleanBuffer,
+    const asset = await this.storageService.upload({
+      buffer: cleanBuffer,
+      kind: 'reference',
+      caseId: dto.caseId,
+      entityId: referenceId,
       mimeType,
-    );
+      sha256,
+      uploadedBy: actor,
+    });
 
+    const { url: originalUri } = await this.storageService.getSignedUrl(asset.assetId, { purpose: 'view' });
+    const { url: thumbnailUri } = await this.storageService.getSignedUrl(asset.assetId, { purpose: 'thumbnail' });
     const normalizedUri = originalUri;
-    const thumbnailUri = originalUri;
 
     // Determine initial pose bin
     let poseBin: any = 'front';
@@ -316,6 +318,8 @@ export class ReferencesService {
 
     // Sync new reference set version
     await this.referenceSetsService.syncReferenceSet(ref.caseId, ref.personId, ref.setVersionRemoved);
+
+    await this.storageService.delete(ref.referenceId, { userId: actor }).catch(() => null);
 
     this.logger.log(`Soft-deleted reference image ${id} and retired associated Pinecone vectors`);
     return { success: true, referenceId: id, deletedAt: ref.deletedAt };

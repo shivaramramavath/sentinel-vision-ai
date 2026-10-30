@@ -122,6 +122,8 @@ describe('MissingPersonsService', () => {
         MissingPersonsService,
         { provide: getModelToken(MissingPerson.name), useValue: mockMissingPersonModel },
         { provide: getModelToken(ReferenceImage.name), useValue: mockReferenceImageModel },
+        { provide: getModelToken('Case'), useValue: { findOne: jest.fn(), updateOne: jest.fn() } },
+        { provide: getModelToken('Sighting'), useValue: { find: jest.fn(), countDocuments: jest.fn() } },
         { provide: ReferenceSetsService, useValue: mockReferenceSetsService },
         { provide: KafkaService, useValue: mockKafkaService },
       ],

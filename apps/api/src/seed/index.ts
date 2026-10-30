@@ -13,9 +13,11 @@ import { SystemAlert, SystemAlertDocument } from '../alerts/schemas/alert.schema
 import { SearchJob, SearchJobDocument } from '../search-jobs/schemas/search-job.schema';
 import { MobileUser, MobileUserDocument } from '../mobile/schemas/mobile-user.schema';
 import { MobileDevice, MobileDeviceDocument } from '../mobile/schemas/mobile-device.schema';
+import { MediaAsset, MediaAssetDocument } from '../common/storage/schemas/media-asset.schema';
 
 import { ensureSeedAssets } from './seed-assets';
 import { seedUsers } from './users.seed';
+import { generateAccountsDoc } from './generate-accounts-doc';
 import { seedCameras } from './cameras.seed';
 import { seedTopology } from './topology.seed';
 import { seedCases } from './cases.seed';
@@ -31,6 +33,7 @@ async function run() {
   const isReset = args.includes('--reset');
   const isCheck = args.includes('--check');
   const isRefreshTimes = args.includes('--refresh-times');
+  const isAccounts = args.includes('--accounts');
   const isForce = args.includes('--force');
 
   if (process.env.NODE_ENV === 'production' && !isForce) {
@@ -42,6 +45,7 @@ async function run() {
   if (isReset) console.log('🔄 Mode: RESET (Purging all seed=true records)');
   if (isCheck) console.log('🔍 Mode: CHECK (Verifying referential integrity)');
   if (isRefreshTimes) console.log('⏱️ Mode: REFRESH-TIMES (Updating timestamps)');
+  if (isAccounts) console.log('📋 Mode: ACCOUNTS (Seeding deterministic test accounts & updating documentation)');
 
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn'] });
 
@@ -56,6 +60,16 @@ async function run() {
   const reportModel = app.get<Model<SystemReportDocument>>(getModelToken(SystemReport.name));
   const alertModel = app.get<Model<SystemAlertDocument>>(getModelToken(SystemAlert.name));
   const searchJobModel = app.get<Model<SearchJobDocument>>(getModelToken(SearchJob.name));
+  const mediaAssetModel = app.get<Model<MediaAssetDocument>>(getModelToken(MediaAsset.name));
+
+  if (isAccounts) {
+    console.log('👤 Seeding Deterministic Test Role Accounts...');
+    const usersResult = await seedUsers(userModel, mobileUserModel, mobileDeviceModel, { reset: isReset });
+    console.log(`✅ Seeded ${usersResult.count} accounts.`);
+    generateAccountsDoc();
+    await app.close();
+    return;
+  }
 
   if (isCheck) {
     console.log('🔎 Running Referential Integrity Audit...');
@@ -129,7 +143,7 @@ async function run() {
 
   // 6. References
   console.log('📸 Validating Reference Photos...');
-  await seedReferences(caseModel, { reset: isReset });
+  await seedReferences(caseModel, mediaAssetModel, { reset: isReset });
 
   // 7. Sightings
   console.log('🎯 Seeding Candidate Sightings...');
@@ -137,7 +151,7 @@ async function run() {
 
   // 8. Evidence Vault
   console.log('🔒 Seeding Evidence items & Hash Chains...');
-  const evidenceResult = await seedEvidence(evidenceModel, sightingModel, { reset: isReset });
+  const evidenceResult = await seedEvidence(evidenceModel, sightingModel, mediaAssetModel, { reset: isReset });
 
   // 9. Search Jobs
   console.log('⚡ Seeding Search Jobs...');

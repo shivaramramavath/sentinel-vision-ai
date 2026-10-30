@@ -2,11 +2,11 @@ import {
   CreateCaseSchema,
   CreateCameraSchema,
   EmbeddingKind,
-  SightingSchema,
   SightingStatus,
   ConfidenceBand,
   SearchResponseSchema,
 } from '../index';
+import { SightingSchema } from '../schemas/sighting.schema';
 
 describe('shared-types — schema validation', () => {
   describe('CreateCaseSchema', () => {
@@ -80,6 +80,9 @@ describe('shared-types — schema validation', () => {
         thumbnailKey: 'thumbnails/sight_1.jpg',
         frameTimestamp: new Date(),
       });
+      if (!result.success) {
+        console.error('SightingSchema validation failure:', JSON.stringify(result.error.format(), null, 2));
+      }
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.status).toBe(SightingStatus.PENDING_REVIEW);

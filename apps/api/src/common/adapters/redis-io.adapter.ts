@@ -8,14 +8,16 @@ export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
   private adapterConstructor: ReturnType<typeof createAdapter> | null = null;
 
-  async connectToRedis(host = 'localhost', port = 6379): Promise<void> {
+  async connectToRedis(host = 'localhost', port = 6379, password?: string, keyPrefix?: string): Promise<void> {
     try {
       const pubClient = new Redis({
         host,
         port,
+        password: password || undefined,
+        keyPrefix: keyPrefix ? `${keyPrefix}socket.io:` : undefined,
         lazyConnect: true,
         maxRetriesPerRequest: 1,
-        connectTimeout: 1500,
+        connectTimeout: 2000,
         retryStrategy: () => null,
       });
       const subClient = pubClient.duplicate();

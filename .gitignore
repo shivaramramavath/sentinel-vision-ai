@@ -19,11 +19,15 @@ venv
 .pytest_cache
 .mypy_cache
 
-# Environment
+# Environment & Generated Secrets
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
+!*.env.example
+!**/.env.example
+!**/.env.local.example
+infra/coturn/turnserver.conf
+infra/mediamtx/mediamtx.yml
 
 # Coverage
 coverage

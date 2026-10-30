@@ -101,7 +101,7 @@ function UsersContent() {
 
                       <td className="p-3">
                         <Badge
-                          variant={u.role === 'admin' ? 'default' : u.role === 'operator' ? 'secondary' : 'outline'}
+                          variant={u.role === 'super_admin' ? 'default' : u.role === 'investigator' ? 'secondary' : 'outline'}
                           className="font-mono text-[10px] uppercase font-bold"
                         >
                           {u.role}
